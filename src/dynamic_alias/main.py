@@ -19,8 +19,8 @@ CACHE_ENABLED = True
 def _resolve_path(options: List[str], default: str) -> str:
     return next((p for p in map(os.path.expanduser, options) if os.path.exists(p)), os.path.expanduser(default))
 
-CACHE_FILE = _resolve_path([".shoco.json", "shoco.json", "~/.shoco.json", "~/shoco.json"], "~/.shoco.json")
-CONFIG_FILE = _resolve_path([".shoco.yaml", "shoco.yaml", "~/.shoco.yaml", "~/shoco.yaml"], "~/.shoco.yaml")
+CACHE_FILE = _resolve_path([".dya.json", "dya.json", "~/.dya.json", "~/dya.json"], "~/.dya.json")
+CONFIG_FILE = _resolve_path([".dya.yaml", "dya.yaml", "~/.dya.yaml", "~/dya.yaml"], "~/.dya.yaml")
 
 def main():
     loader = ConfigLoader(CONFIG_FILE)

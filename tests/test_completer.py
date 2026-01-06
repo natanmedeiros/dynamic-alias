@@ -40,13 +40,13 @@ class TestDynamicAliasCompleter(unittest.TestCase):
     def setUpClass(cls):
         # Load actual config to test patterns
         # Assuming run from root of project
-        cls.config_file = "shoco.yaml"
+        cls.config_file = "dya.yaml"
         if not os.path.exists(cls.config_file):
              # Try looking one level up if run from tests dir (though standard is root)
              if os.path.exists(os.path.join("..", cls.config_file)):
                  cls.config_file = os.path.join("..", cls.config_file)
              else:
-                 raise FileNotFoundError("shoco.yaml must exist for testing")
+                 raise FileNotFoundError("dya.yaml must exist for testing")
              
         cls.loader = ConfigLoader(cls.config_file)
         cls.loader.load()

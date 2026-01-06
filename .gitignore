@@ -1,7 +1,7 @@
 .venv
 __pycache__
-shoco.json
-shoco.yaml
+dya.json
+dya.yaml
 
 # Build artifacts
 build/

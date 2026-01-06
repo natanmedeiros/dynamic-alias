@@ -16,9 +16,9 @@ Dynamic Alias is a powerful CLI application that allows users to create "aliases
 ## System Requirements
 
 -   Python 3.8+
--   Configuration file: `shoco.yaml` (default at `~/.shoco.yaml` or current directory)
+-   Configuration file: `dya.yaml` (default at `~/.dya.yaml` or current directory)
 
-## Configuration (`shoco.yaml`)
+## Configuration (`dya.yaml`)
 
 The application is driven by a YAML configuration file that defines three main structures: **Dict**, **Dynamic Dict**, and **Command**.
 
