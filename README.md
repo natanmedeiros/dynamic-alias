@@ -6,6 +6,12 @@
 ![RPM Build](https://img.shields.io/badge/RPM-pending-yellow)
 
 
+> [!CAUTION]
+> **UNDER DEVELOPMENT**
+>
+> This project is currently in **active development** and is **not ready for production use**.
+> Although many features are functional, breaking changes may occur at any time.
+
 Dynamic Alias is a powerful CLI application that allows users to create "aliases with superpowers". It transforms complex command-line interactions into simple, autocompletable shortcuts, leveraging dynamic data sources and structured configurations.
 
 ## Features
