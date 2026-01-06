@@ -2,3 +2,8 @@
 __pycache__
 shoco.json
 shoco.yaml
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

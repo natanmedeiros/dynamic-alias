@@ -1,12 +1,12 @@
 """
-Short command tests
+Dynamic Alias Completer Tests
 Test Rules:
     @system_rules.txt
 """
 import unittest
 import sys
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 # Mock prompt_toolkit modules BEFORE import
 sys.modules['prompt_toolkit'] = MagicMock()
@@ -16,29 +16,37 @@ sys.modules['prompt_toolkit.shortcuts'] = MagicMock()
 sys.modules['prompt_toolkit.formatted_text'] = MagicMock()
 sys.modules['prompt_toolkit.key_binding'] = MagicMock()
 
-# Define dummy Completer class so ShocoCompleter inherits correctly
+# Define dummy Completer class so DynamicAliasCompleter inherits correctly
 class DummyCompleter:
     def get_completions(self, document, complete_event):
         pass
 sys.modules['prompt_toolkit.completion'].Completer = DummyCompleter
 sys.modules['prompt_toolkit.completion'].Completion = lambda text, start_position=0, display=None: (text, display)
 
-# Add current dir to path
-sys.path.append(os.getcwd())
+# Add src to path to allow imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from short_command import ShocoCompleter, ConfigLoader, DataResolver, CommandExecutor
+from dynamic_alias.completer import DynamicAliasCompleter
+from dynamic_alias.config import ConfigLoader
+from dynamic_alias.resolver import DataResolver
+from dynamic_alias.executor import CommandExecutor
 
 class MockDocument:
     def __init__(self, text):
         self.text_before_cursor = text
 
-class TestShocoCompleter(unittest.TestCase):
+class TestDynamicAliasCompleter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Load actual config to test patterns
+        # Assuming run from root of project
         cls.config_file = "shoco.yaml"
         if not os.path.exists(cls.config_file):
-             raise FileNotFoundError("shoco.yaml must exist for testing")
+             # Try looking one level up if run from tests dir (though standard is root)
+             if os.path.exists(os.path.join("..", cls.config_file)):
+                 cls.config_file = os.path.join("..", cls.config_file)
+             else:
+                 raise FileNotFoundError("shoco.yaml must exist for testing")
              
         cls.loader = ConfigLoader(cls.config_file)
         cls.loader.load()
@@ -66,7 +74,7 @@ class TestShocoCompleter(unittest.TestCase):
         }
         
         cls.executor = CommandExecutor(cls.resolver)
-        cls.completer = ShocoCompleter(cls.resolver, cls.executor)
+        cls.completer = DynamicAliasCompleter(cls.resolver, cls.executor)
 
     def get_completions(self, text):
         doc = MockDocument(text)

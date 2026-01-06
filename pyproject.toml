@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dynamic_alias"
+version = "0.1.0"
+authors = [
+  { name="Natan Medeiros", email="natanmedeirosrn@gmail.com" },
+]
+description = "Dynamic Alias is a powerful CLI application that allows users to create 'aliases with superpowers'. It transforms complex command-line interactions into simple, autocompletable shortcuts, leveraging dynamic data sources and structured configurations."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "prompt_toolkit",
+    "PyYAML",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+dya = "dynamic_alias.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

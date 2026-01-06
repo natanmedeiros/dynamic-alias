@@ -1,6 +1,6 @@
-# Short Command (`shoco`)
+# Dynamic Alias (`dya`)
 
-Short Command is a powerful CLI application that allows users to create "aliases with superpowers". It transforms complex command-line interactions into simple, autocompletable shortcuts, leveraging dynamic data sources and structured configurations.
+Dynamic Alias is a powerful CLI application that allows users to create "aliases with superpowers". It transforms complex command-line interactions into simple, autocompletable shortcuts, leveraging dynamic data sources and structured configurations.
 
 ## Features
 
@@ -11,12 +11,11 @@ Short Command is a powerful CLI application that allows users to create "aliases
     -   **User Input Variables** (`${var}`): Placeholders that you fill in during execution.
     -   **Application Variables** (`$${source.key}`): Values automatically populated from your dynamic data sources.
     -   **Environment Variables** (`$${env.VAR}`): Integration with system environment variables.
--   **Interactive Shell**: A robust shell environment (`shoco >`) with menu-based completion.
+-   **Interactive Shell**: A robust shell environment (`dya >`) with menu-based completion.
 
 ## System Requirements
 
--   Python 3.x
--   Dependencies: `prompt_toolkit`, `pyyaml`
+-   Python 3.8+
 -   Configuration file: `shoco.yaml` (default at `~/.shoco.yaml` or current directory)
 
 ## Configuration (`shoco.yaml`)
@@ -73,38 +72,57 @@ sub:
     command: -f ${filename}
 ```
 
-## Application Behavior
+## Installation and Building
 
-### Autocomplete & Navigation
-*   **Smart Suggestions**: As you type, `shoco` dynamically suggests commands, subcommands, and arguments.
-*   **Menu Navigation**:
-    *   **Tab**: Opens the completion menu or cycles through options.
-    *   **Enter**: Selects the highlighted option from the menu. If no menu is open, it executes the command.
-*   **Clean Interface**: To keep the interface uncluttered, placeholders for user variables (like `${filename}`) are not suggested in the menu. Simply type your value, and autocomplete will resume for the next argument.
+### Python Wheel
+To build and install the package via pip:
 
-### Dynamic Data Caching
-To ensure speed, data fetched from external commands (Dynamic Dicts) is cached locally (default: `~/.shoco.json`). This cache is updated automatically, so your autocomplete remains fast even with complex data sources.
+```bash
+# Build
+python -m build
 
-### Context-Aware Resolution
-When you select an item from a dynamic list (e.g., a database name), `shoco` intelligently resolves all associated properties (like host IP, port, or user) for that specific item, ensuring your command executes with the correct context every time.
+# Install (Local)
+pip install .
+```
 
-## Usage Example
+### Debian/Ubuntu (APT)
+To build a `.deb` package:
+
+```bash
+# Requires stdeb
+pip install stdeb fakeroot
+
+# Build
+python3 setup.py --command-packages=stdeb.command bdist_deb
+
+# Install
+sudo dpkg -i deb_dist/python3-dynamic-alias_*.deb
+# or
+sudo apt install ./deb_dist/python3-dynamic-alias_*.deb
+```
+
+### Fedora/RHEL (DNF/RPM)
+To build an `.rpm` package:
+
+```bash
+# Copy source to rpmbuild SOURCES
+python setup.py sdist
+cp dist/dynamic-alias-0.1.0.tar.gz ~/rpmbuild/SOURCES/
+
+# Build
+rpmbuild -ba packaging/rpm/dynamic-alias.spec
+
+# Install
+sudo dnf install ~/rpmbuild/RPMS/noarch/dynamic-alias-*.noarch.rpm
+```
+
+## Usage
 
 1.  **Start the shell**:
     ```bash
-    python short_command.py
+    dya
     ```
 2.  **Type a command**:
     ```text
-    shoco > pg db1 -o my_output.txt
+    dya > pg db1 -o my_output.txt
     ```
-    -   `pg` triggers the alias.
-    -   `db1` is autocompleted from your `database_servers` list.
-    -   `-o` is an optional argument.
-    -   `my_output.txt` is the value for `${filename}`.
-
-## Installation
-
-```bash
-pip install prompt_toolkit pyyaml
-```
