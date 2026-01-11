@@ -15,7 +15,7 @@ If you have discovered a security vulnerability in **Dynamic Alias**, we appreci
 
 ### How to Report
 
-Please report the vulnerability via usage of the **"Report a vulnerability"** feature in the Security tab of this repository.
+Please report the vulnerability via usage of the **"Advisories"** feature in the Security tab of this repository.
 
 Please include the following details in your report:
 
