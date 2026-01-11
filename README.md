@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/dynamic-alias.png" alt="Dynamic Alias" width="40%">
+</p>
+
 # Dynamic Alias (dya)
 
 A declarative CLI builder that transforms complex command-line workflows into simple, memorable aliases with smart autocompletion.
