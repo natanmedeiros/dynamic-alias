@@ -162,11 +162,12 @@ class DynamicAliasCompleter(Completer):
                         app_var_match = re.match(r'\$\$\{(\w+)\.(\w+)\}', expected_token_alias)
                         if app_var_match:
                             source, key = app_var_match.group(1), app_var_match.group(2)
-                            if source in self.resolver.resolved_data:
-                                for item in self.resolver.resolved_data[source]:
-                                    val = str(item.get(key, ''))
-                                    if val.startswith(prefix):
-                                        yield Completion(val, start_position=-len(prefix))
+                            # Lazy load: only resolve this dict when needed
+                            data = self.resolver.resolve_one(source)
+                            for item in data:
+                                val = str(item.get(key, ''))
+                                if val.startswith(prefix):
+                                    yield Completion(val, start_position=-len(prefix))
                         
                         # User Var ${...}
                         elif expected_token_alias.startswith('${'):
@@ -221,11 +222,12 @@ class DynamicAliasCompleter(Completer):
                 app_var_match = re.match(r'\$\$\{(\w+)\.(\w+)\}', head)
                 if app_var_match:
                     source, key = app_var_match.group(1), app_var_match.group(2)
-                    if source in self.resolver.resolved_data:
-                        for item in self.resolver.resolved_data[source]:
-                            val = str(item.get(key, ''))
-                            if val.startswith(prefix):
-                                yield Completion(val, start_position=-len(prefix))
+                    # Lazy load: only resolve this dict when needed
+                    data = self.resolver.resolve_one(source)
+                    for item in data:
+                        val = str(item.get(key, ''))
+                        if val.startswith(prefix):
+                            yield Completion(val, start_position=-len(prefix))
                 elif head.startswith('${'):
                      # User var placeholder as start of command? Rare but possible.
                      yield Completion(head, start_position=-len(prefix))

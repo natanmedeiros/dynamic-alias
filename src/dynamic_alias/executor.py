@@ -31,7 +31,7 @@ class CommandExecutor:
                 source_name = app_var_match.group(1) 
                 key_name = app_var_match.group(2)    
                 
-                data_list = self.resolver.resolved_data.get(source_name)
+                data_list = self.resolver.resolve_one(source_name)
                 if not data_list:
                     return False, {}, False
                 

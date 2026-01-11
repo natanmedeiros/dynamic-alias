@@ -78,8 +78,8 @@ def main():
     cache.load()
     
     resolver = DataResolver(loader, cache)
-    resolver.resolve_all()
-    cache.save()
+    # Don't resolve_all() at startup - use lazy loading
+    # resolve_all() is only called for non-interactive command execution
     
     executor = CommandExecutor(resolver)
 
@@ -89,6 +89,9 @@ def main():
             executor.print_global_help()
             return
 
+        # Non-interactive mode also uses lazy loading
+        # resolve_one() is called during find_command and execute as needed
+        
         result = executor.find_command(filtered_args)
         if result:
             cmd, vars, is_help, remaining = result
@@ -96,9 +99,12 @@ def main():
                 executor.print_help(cmd)
             else:
                 executor.execute(cmd, vars, remaining)
+            # Save cache after execution (captures any resolved dicts)
+            cache.save()
         else:
             print("Error: Command not found.")
     else:
+        # Interactive mode - lazy loading via resolve_one() in completer
         shell = InteractiveShell(resolver, executor)
         shell.run()
 

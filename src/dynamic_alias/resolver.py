@@ -12,6 +12,7 @@ class DataResolver:
         self.resolved_data: Dict[str, List[Dict[str, Any]]] = {}
 
     def resolve_all(self):
+        """Resolve all dicts and dynamic_dicts at once (for non-interactive mode)."""
         for name, d in self.config.dicts.items():
             self.resolved_data[name] = d.data
         
@@ -21,6 +22,33 @@ class DataResolver:
                 data = self._execute_dynamic_source(dd)
                 self.cache.set(name, data)
             self.resolved_data[name] = data
+
+    def resolve_one(self, name: str) -> List[Dict[str, Any]]:
+        """
+        Resolve a single dict/dynamic_dict on-demand (lazy loading).
+        Uses cache if available, otherwise executes command and caches result.
+        """
+        # Already resolved - return cached result
+        if name in self.resolved_data:
+            return self.resolved_data[name]
+        
+        # Check static dicts first
+        if name in self.config.dicts:
+            self.resolved_data[name] = self.config.dicts[name].data
+            return self.resolved_data[name]
+        
+        # Check dynamic dicts
+        if name in self.config.dynamic_dicts:
+            dd = self.config.dynamic_dicts[name]
+            data = self.cache.get(name, ttl=dd.cache_ttl)
+            if data is None:
+                data = self._execute_dynamic_source(dd)
+                self.cache.set(name, data)
+                self.cache.save()
+            self.resolved_data[name] = data
+            return self.resolved_data[name]
+        
+        return []
 
     def _execute_dynamic_source(self, dd: DynamicDictConfig) -> List[Dict[str, Any]]:
         try:
