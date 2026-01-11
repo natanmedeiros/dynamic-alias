@@ -75,6 +75,13 @@ Defines a CLI command.
 *   **Constraint**: Non-recursive (cannot have `sub` or `args`).
 
 ## Declarative Metadata
+config:
+    style-completion: "bg:#008888 #ffffff"
+    style-completion-current: "bg:#00aaaa #000000"
+    style-scrollbar-background: "bg:#88aaaa"
+    style-scrollbar-button: "bg:#222222"
+    style-placeholder-color: "gray"
+    style-placeholder-text: "(tab for menu)"
 
 --- # New config block
 type: dict
@@ -95,6 +102,7 @@ data: # Items list
 type: dynamic_dict
 name: # "Dict name"
 priority: [0-1000] # Dict execution priority for nested usage
+cache-ttl: # Time to live in seconds, default 300s
 command: # Multi-line command when init with "|" or single line command when missing "|"
 mapping: # Mapping from command result keys to internal keys
   custom_internal_key1: command_output_key1

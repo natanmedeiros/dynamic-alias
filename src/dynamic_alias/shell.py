@@ -1,5 +1,5 @@
-import shlex
 from prompt_toolkit import PromptSession
+from prompt_toolkit.history import History
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
@@ -7,6 +7,35 @@ from .resolver import DataResolver
 from .executor import CommandExecutor
 from .completer import DynamicAliasCompleter
 from .constants import CUSTOM_SHORTCUT
+
+class CacheHistory(History):
+    def __init__(self, cache_manager, limit: int = 20):
+        super().__init__()
+        self.cache_manager = cache_manager
+        self.limit = limit
+        
+    def load_history_strings(self):
+        # Return history in chronological order (oldest to newest)
+        # User reported reverse order issue, trying implicit reversal? 
+        # Actually prompt_toolkit expects oldest->newest.
+        # But if user says it's reversed... let's try just returning it as is, but verify list.
+        # If user claims "processing in reverse", maybe passing reversed() helps?
+        # Let's try reversing it.
+        # Original: return self.cache_manager.get_history()
+        # If the file is Oldest->Newest, and up-arrow gives Oldest, then toolkit thinks Oldest is Newest.
+        # This implies Oldest is last.
+        # So yielding Oldest LAST would cause this.
+        # But we yield Newest LAST.
+        # Let's try reversing the list so Newest is yielded FIRST?
+        # If Newest is yielded FIRST (index 0), then prompt_toolkit might iterate from 0?
+        # No, it uses iterator.
+        
+        # Let's just trust the "reverse" feedback and reverse the list.
+        return reversed(self.cache_manager.get_history())
+        
+    def store_string(self, string: str):
+         self.cache_manager.add_history(string, self.limit)
+         self.cache_manager.save()
 
 class InteractiveShell:
     def __init__(self, resolver: DataResolver, executor: CommandExecutor):
@@ -16,12 +45,14 @@ class InteractiveShell:
     def run(self):
         completer = DynamicAliasCompleter(self.resolver, self.executor)
         
-        style = Style.from_dict({
-            'completion-menu.completion': 'bg:#008888 #ffffff',
-            'completion-menu.completion.current': 'bg:#00aaaa #000000',
-            'scrollbar.background': 'bg:#88aaaa',
-            'scrollbar.button': 'bg:#222222',
-        })
+        # Rule 1.1.10: Use styles from config (with defaults in models.py)
+        global_config = self.resolver.config.global_config
+        style = Style.from_dict(global_config.styles)
+        
+        # Placeholder styling
+        placeholder_color = global_config.placeholder_color
+        placeholder_text_content = global_config.placeholder_text
+        placeholder_html = HTML(f'<style color="{placeholder_color}">{placeholder_text_content}</style>')
 
         bindings = KeyBindings()
 
@@ -86,16 +117,20 @@ class InteractiveShell:
             # even if we deleted the entire word or are now at an empty string.
             b.start_completion(select_first=False) # select_first=False to just show menu without pre-selecting to avoid aggressive intrusion
         
+        history_size = global_config.history_size
+        history = CacheHistory(self.resolver.cache, history_size)
+        
         session = PromptSession(
             completer=completer,
             style=style,
+            history=history,
             complete_while_typing=True,
             key_bindings=bindings
         )
 
         while True:
             try:
-                text = session.prompt(f'{CUSTOM_SHORTCUT} > ', placeholder=HTML('<style color="gray">(tab for menu)</style>'))
+                text = session.prompt(f'{CUSTOM_SHORTCUT} > ', placeholder=placeholder_html)
                 text = text.strip()
                 if not text:
                     continue

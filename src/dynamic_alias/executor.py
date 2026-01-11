@@ -132,6 +132,7 @@ class CommandExecutor:
         return current_chain, variables, False, remaining_args
 
     def execute(self, command_chain: List[Union[CommandConfig, SubCommand, ArgConfig]], variables: Dict[str, Any], remaining_args: List[str] = None):
+        
         if remaining_args is None:
             remaining_args = []
 
@@ -192,6 +193,9 @@ class CommandExecutor:
             effective_timeout = timeout if timeout > 0 else None
                 
             subprocess.run(cmd_resolved, shell=True, timeout=effective_timeout)
+            
+            # Save valid cache state (dynamic dicts)
+            self.resolver.cache.save()
 
         except KeyboardInterrupt:
             print("\nOperation cancelled.")

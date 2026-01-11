@@ -16,7 +16,7 @@ class DataResolver:
             self.resolved_data[name] = d.data
         
         for name, dd in self.config.dynamic_dicts.items():
-            data = self.cache.get(name)
+            data = self.cache.get(name, ttl=dd.cache_ttl)
             if data is None:
                 data = self._execute_dynamic_source(dd)
                 self.cache.set(name, data)

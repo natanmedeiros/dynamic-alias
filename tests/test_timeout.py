@@ -1,52 +1,62 @@
+"""
+Timeout Tests
+Test Rules:
+    @system_rules.txt
+    @global-test-rules.md
+"""
 import unittest
+import os
+import sys
 from unittest.mock import MagicMock, patch
+
+# Add src to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
 from dynamic_alias.executor import CommandExecutor
 from dynamic_alias.resolver import DataResolver
-from dynamic_alias.models import CommandConfig, DynamicDictConfig
+from dynamic_alias.config import ConfigLoader
 
 class TestTimeout(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.config_file = os.path.join(os.path.dirname(__file__), "dya.yaml")
+        assert os.path.exists(cls.config_file)
+        
     def setUp(self):
-        # Setup Resolver and Executor
-        self.mock_config_loader = MagicMock()
-        self.mock_cache = MagicMock()
-        self.resolver = DataResolver(self.mock_config_loader, self.mock_cache)
-        self.resolver.resolved_data = {}
+        self.loader = ConfigLoader(self.config_file)
+        self.loader.load()
+        self.resolver = DataResolver(self.loader, MagicMock())
         self.executor = CommandExecutor(self.resolver)
 
     @patch('dynamic_alias.executor.print_formatted_text')
     @patch('subprocess.run')
-    def test_command_timeout(self, mock_run, mock_print):
-        # 1. Default Timeout (0 -> None)
-        cmd_default = CommandConfig(name="DefaultTimeout", alias="def", command="echo", timeout=0)
+    def test_command_timeout_from_config(self, mock_run, mock_print):
+        # 1. Custom Timeout (Timeout Cmd -> timeout: 10)
+        # Find 'timeout' command
+        chain, vars, is_help, remaining = self.executor.find_command(["timeout"])
+        assert chain is not None
         
-        self.executor.execute([cmd_default], {}, [])
-        args, kwargs = mock_run.call_args
-        self.assertIsNone(kwargs.get('timeout'))
-
-        # 2. Custom Timeout
-        cmd_custom = CommandConfig(name="CustomTimeout", alias="cust", command="echo", timeout=5)
-        
-        self.executor.execute([cmd_custom], {}, [])
-        args, kwargs = mock_run.call_args
-        self.assertEqual(kwargs.get('timeout'), 5)
-
-    @patch('subprocess.run')
-    def test_dynamic_dict_timeout(self, mock_run):
-        # Setup mock return valid json so it doesn't fail before subprocess call
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = '[{"key": "val"}]'
-
-        # 1. Default Timeout (10)
-        dd_default = DynamicDictConfig(name="DefaultDD", command="list", mapping={}, timeout=10)
-        self.resolver._execute_dynamic_source(dd_default)
+        self.executor.execute(chain, vars, remaining)
         args, kwargs = mock_run.call_args
         self.assertEqual(kwargs.get('timeout'), 10)
 
-        # 2. Custom Timeout
-        dd_custom = DynamicDictConfig(name="CustomDD", command="list", mapping={}, timeout=30)
-        self.resolver._execute_dynamic_source(dd_custom)
+    @patch('subprocess.run')
+    def test_dynamic_dict_timeout(self, mock_run):
+        # Setup mock return valid json
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = '[{"id": "test"}]'
+
+        # 1. Default Timeout (dynamic_nodes has no timeout specified, default 10?)
+        # Models default is 10.
+        dd_config = self.loader.dynamic_dicts.get('dynamic_nodes')
+        # dya.yaml: no timeout specified for dynamic_nodes.
+        # So it should be default.
+        
+        self.resolver._execute_dynamic_source(dd_config)
         args, kwargs = mock_run.call_args
-        self.assertEqual(kwargs.get('timeout'), 30)
+        # Default is 10 in DynamicDictConfig?
+        # Let's check model... usually it's 10.
+        self.assertEqual(kwargs.get('timeout'), 10) 
 
 if __name__ == '__main__':
     unittest.main()

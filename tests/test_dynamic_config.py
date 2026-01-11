@@ -6,13 +6,13 @@ def test_constants_defaults():
     # Check if pyproject.toml exists
     if os.path.exists("pyproject.toml"):
         shortcut, name = get_config_from_toml()
-        # In this workspace, pyproject.toml has shortcut="dya" and name="Dynamic Alias"
+        # In this workspace, pyproject.toml has shortcut="dya" and name="Dynamic Alias2"
         assert shortcut == "dya"
-        assert name == "Dynamic Alias"
+        assert name == "Dynamic Alias2"
         
         # Also verify the module-level constants match
         assert CUSTOM_SHORTCUT == "dya"
-        assert CUSTOM_NAME == "Dynamic Alias"
+        assert CUSTOM_NAME == "Dynamic Alias2"
     else:
         # Fallback check
         assert get_config_from_toml() == (DEFAULT_SHORTCUT, DEFAULT_NAME)

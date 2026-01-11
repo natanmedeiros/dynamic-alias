@@ -15,6 +15,8 @@ These rules must be applied to every application file
 1.1.7 - Every structure can use environment variables
 1.1.8 - dya shortcut can be replace by customer defined shortcut defined in pyproject.toml custom-build shortcut
 1.1.9 - every place "dya" term in code must be replaced by $(customer-defined-shortcut) to be possible change it
+1.1.10 - shell style and placeholder must have default value, but if defined in config file inside type config must be used instead of default
+1.1.11 - Must validate input and remove BOM issue from user created config file
 1.2 - Application
 1.2.1 - Code must be written in a way that is easy to read, understand, debug and test
 1.2.2 - Create a new const to define if cache is enabled or not and ttl size in seconds
@@ -40,6 +42,8 @@ These rules must be applied to every application file
 1.2.18.2 - Must exist a constant named CUSTOM_NAME with default "DYNAMIC ALIAS"
 1.2.18.3 - CUSTOM_SHORTCUT must be used as binary to trigger application when builded and as promt prefix in interactive mode
 1.2.18.4 - CUSTOM_NAME must be used to build helper header
+1.2.19 - cache file must contain _history with command execution history limited to default last 20 but can be replaced by used defined config history-size with max of 1000
+1.2.20 - if _history exists, cache must be appended and shifted only if exceeds history-size
 1.3 - Helper
 1.3.1 - The helper can be displayed by using flag -h or --help
 1.3.2 - Can't use -h or --help as command args, these flags are restricted
