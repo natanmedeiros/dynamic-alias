@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/dynamic-alias.png" alt="Dynamic Alias" width="40%">
+  <img src="docs/dynamic-alias.png" alt="Dynamic Alias" width="80%">
 </p>
 
 # Dynamic Alias (dya)
