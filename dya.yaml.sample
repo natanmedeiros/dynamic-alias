@@ -1,134 +1,271 @@
+# =============================================================================
+# Dynamic Alias Sample Configuration
+# =============================================================================
+# This file demonstrates all available features. Copy to ~/.dya.yaml to use.
+# Documentation: see docs/ folder for detailed explanations.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# GLOBAL CONFIGURATION
+# -----------------------------------------------------------------------------
+# The config block defines global settings for the CLI.
+# Style options follow prompt_toolkit format: https://python-prompt-toolkit.readthedocs.io
+
+config:
+  history-size: 100                              # Max commands in history (max: 1000)
+  style-completion: "bg:#008888 #ffffff"         # Completion menu colors
+  style-completion-current: "bg:#00aaaa #000000" # Selected item colors
+  style-placeholder-text: "(tab for suggestions)"
+
+# =============================================================================
+# STATIC DICTS
+# =============================================================================
+# Static dicts define fixed data that doesn't change at runtime.
+# Use for configuration, server lists, or any static reference data.
+
 ---
 type: dict
-name: database_servers
+name: environments
 data:
-  - name: db1
-    host: databasehost1
-    port: 5432
-    user: $${env.DB_USER}
-    dbname: test
-  - name: db2
-    host: databasehost2
-    port: 5432
-    user: $${env.DB_USER}
-    dbname: test
-  - name: db3
-    host: databasehost3
-    port: 5432
-    user: $${env.DB_USER}
-    dbname: test
+  - name: dev
+    host: dev.example.com
+    port: 8080
+  - name: staging
+    host: staging.example.com
+    port: 8080
+  - name: prod
+    host: prod.example.com
+    port: 443
+
+---
+type: dict
+name: default_users
+data:
+  - name: postgres
+    user: postgres
+  - name: admin
+    user: admin
+
+# =============================================================================
+# DYNAMIC DICTS
+# =============================================================================
+# Dynamic dicts fetch data from external commands at runtime.
+# Results are cached based on cache-ttl (default: 300 seconds).
+# Priority controls execution order when dicts reference each other.
 
 ---
 type: dynamic_dict
-name: redis_servers
-priority: 1
+name: services
+priority: 1              # Lower priority executes first
+timeout: 10              # Command timeout in seconds
+cache-ttl: 600           # Cache valid for 10 minutes
 command: |
-  aws elasticache describe-cache-clusters \
-    --query "CacheClusters[?Engine=='redis'].{name:CacheClusterId, host:CacheNodes[0].Endpoint.Address, port:CacheNodes[0].Endpoint.Port}" \
-    --output json
+  # Replace with your actual command (curl, aws, gcloud, az, etc.)
+  echo '[{"name": "api", "port": 3000}, {"name": "web", "port": 80}]'
 mapping:
-  name: name
-  host: host
+  name: name             # Internal key: JSON key
   port: port
 
----
-type: dict
-name: application_servers
-data:
-  - name: app1
-    host: app1host
-    port: 8080
-    user: admin
-    dbname: test
-  - name: app2
-    host: app2host
-    port: 8080
-    user: admin
-    dbname: test
+# =============================================================================
+# COMMANDS - BASIC
+# =============================================================================
+# Commands define aliases that execute shell commands.
+# Use ${variable} for user input, $${dict.key} for dict references.
 
 ---
 type: command
-name: s3 sync
-alias: sync ${source} ${destination}
-command: aws s3 sync --profile abc ${source} ${destination}
-helper: |
-  Description:
-    Syncs files with AWS S3 bucket
-  Usage:
-    minha_cli sync ${source} ${destination}
+name: Simple Command
+alias: hello
+command: echo 'Hello from Dynamic Alias!'
+helper: A simple example command that prints a greeting.
 
 ---
 type: command
-name: application health check
-alias: check $${application_servers.name}
-command: curl http://$${application_servers.host}:$${application_servers.port}/health
+name: User Input Example
+alias: greet ${name}
+command: echo "Hello, ${name}!"
 helper: |
   Description:
-    Calls curl at health check endpoint
+    Greets the specified user.
+  
   Usage:
-    minha_cli check application_servers.name
+    dya greet <name>
+  
+  Example:
+    dya greet Alice
+
+# =============================================================================
+# COMMANDS - USING DICTS
+# =============================================================================
+# Reference static dicts with $${dict_name.key}
 
 ---
 type: command
-name: PostgreSQL
-alias: pg $${database_servers.name}
-command: psql -h $${database_servers.host} -p $${database_servers.port} -U $${database_servers.user} -d $${database_servers.dbname}
+name: Environment Switch
+alias: env $${environments.name}
+command: echo "Switching to $${environments.host}:$${environments.port}"
+helper: Switch to the specified environment.
+
+# =============================================================================
+# COMMANDS - USING DYNAMIC DICTS
+# =============================================================================
+# Reference dynamic dicts the same way as static dicts.
+
+---
+type: command
+name: Service Status
+alias: status $${services.name}
+command: curl -s http://localhost:$${services.port}/health
+helper: Check health status of a service.
+
+# =============================================================================
+# COMMANDS - WITH SUBCOMMANDS
+# =============================================================================
+# Subcommands allow nested command structures.
+# Each subcommand can have its own helper, args, and nested subs.
+
+---
+type: command
+name: File Operations
+alias: file
+command: ""
+helper: File management utilities.
+sub:
+  - alias: list ${directory}
+    command: ls -la ${directory}
+    helper: List files in directory.
+  - alias: count ${directory}
+    command: ls -1 ${directory} | wc -l
+    helper: Count files in directory.
+  - alias: find ${pattern}
+    command: find . -name "${pattern}"
+    helper: Find files matching pattern.
+
+# =============================================================================
+# COMMANDS - WITH ARGUMENTS
+# =============================================================================
+# Arguments are optional flags that modify command behavior.
+# Args are scoped to their parent - they cannot be used after a subcommand.
+
+---
+type: command
+name: Process Manager
+alias: proc
+command: ps
 helper: |
   Description:
-    Calls psql with possibility of execution of sql file or sql text
+    Process listing with optional filters.
+  
   Usage:
-    minha_cli pg database_servers.name [option]
-  Options:
-    file ${filename}
-    cmd ${sql_text}
+    dya proc [options]
 args:
-  - alias: -o ${output_filename}
-    command: -o ${output_filename}
-    helper: |
-      Description:
-        Outputs to a file
-      Usage:
-        minha_cli pg database_servers.name -o output_filename
-  - alias: -v
-    command: -v
-    helper: |
-      Description:
-        Verbose mode
-      Usage:
-        minha_cli pg database_servers.name -v
-sub:
-  - alias: file ${filename}
-    command: -f ${filename}
-    helper: |
-      Description:
-        Executes a sql file
-      Usage:
-        minha_cli pg database_servers.name file filename
-  - alias: cmd ${sql_text}
-    command: -c "${sql_text}"
-    helper: |
-      Description:
-        Executes a sql text
-      Usage:
-        minha_cli pg database_servers.name cmd sql_text
+  - alias: -a
+    command: aux
+    helper: Show all processes with details.
+  - alias: -u ${user}
+    command: -u ${user}
+    helper: Filter by user.
+  - alias: --tree
+    command: -ejH
+    helper: Show process tree.
+
+# =============================================================================
+# COMMANDS - SUBCOMMANDS WITH ARGS
+# =============================================================================
+# Subcommands can have their own args.
+# This example shows a complete command with subs and args at multiple levels.
 
 ---
 type: command
-name: Redis
-alias: rd $${redis_servers.name}
-command: redis-cli -h $${redis_servers.host} -p $${redis_servers.port}
+name: Project Manager
+alias: project
+command: ""
+strict: true             # Reject unrecognized arguments
+helper: Project management commands.
+args:
+  - alias: --verbose
+    command: ""
+    helper: Enable verbose output.
+sub:
+  - alias: build
+    command: echo "Building project..."
+    helper: Build the project.
+    args:
+      - alias: --release
+        command: echo "Release mode"
+        helper: Build in release mode.
+      - alias: --clean
+        command: echo "Clean first" &&
+        helper: Clean before building.
+  - alias: test
+    command: echo "Running tests..."
+    helper: Run project tests.
+    args:
+      - alias: --coverage
+        command: echo "With coverage"
+        helper: Generate coverage report.
+      - alias: -f ${filter}
+        command: echo "Filter: ${filter}"
+        helper: Filter tests by pattern.
+
+# =============================================================================
+# COMMANDS - STRICT MODE
+# =============================================================================
+# When strict: true, unrecognized arguments are rejected.
+# When strict: false (default), extra arguments are appended to the command.
+
+---
+type: command
+name: Strict Example
+alias: strict-cmd
+command: echo "This is strict"
+strict: true
+helper: This command rejects any extra arguments.
+
+---
+type: command
+name: Flexible Example
+alias: flex-cmd
+command: echo "Base command"
+strict: false            # Default - extra args are appended
+helper: |
+  This command accepts extra arguments.
+  Example: dya flex-cmd --any-flag value
+  Executes: echo "Base command" --any-flag value
+
+# =============================================================================
+# COMMANDS - WITH TIMEOUT
+# =============================================================================
+# Timeout prevents commands from hanging indefinitely.
+# Value is in seconds. 0 (default) means no timeout.
+
+---
+type: command
+name: Timeout Example
+alias: slow
+command: sleep 10 && echo "Done"
+timeout: 5               # Will timeout after 5 seconds
+helper: This command has a 5 second timeout.
+
+# =============================================================================
+# MULTILINE COMMANDS
+# =============================================================================
+# Use YAML's | for complex multiline shell scripts.
+
+---
+type: command
+name: Setup Script
+alias: setup
+command: |
+  echo "Step 1: Checking dependencies..."
+  echo "Step 2: Creating directories..."
+  mkdir -p ./data ./logs ./temp
+  echo "Step 3: Setup complete!"
 helper: |
   Description:
-    Calls redis-cli with possibility of execution of script
-  Usage:
-    minha_cli rd redis_servers.name [script]
-  Options:
-    ${script}
-sub:
-  - alias: ${script}
-    command: ${script}
-    helper: |
-      Description:
-        Executes a script
-      Usage:
-        minha_cli rd redis_servers.name script
+    Run initial project setup.
+  
+  Steps:
+    1. Check dependencies
+    2. Create required directories
+    3. Display completion message
