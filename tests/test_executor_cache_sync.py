@@ -50,7 +50,8 @@ command: echo test
     def tearDown(self):
         self.temp_dir.cleanup()
         
-    def test_execute_reloads_cache_after_subprocess(self):
+    @patch('dynamic_alias.crypto.get_machine_id', return_value='test-machine-id')
+    def test_execute_reloads_cache_after_subprocess(self, mock_machine_id):
         """Executor should reload cache after subprocess to pick up external changes."""
         from dynamic_alias.crypto import encrypt_data, decrypt_data
         from dynamic_alias.constants import CACHE_KEY_CRYPT

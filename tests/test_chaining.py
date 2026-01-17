@@ -50,12 +50,16 @@ class TestDynamicDictChaining(unittest.TestCase):
         self.loader.load()
         
         self.cache = CacheManager(self.cache_path, enabled=True)
+        # Mock crypto to prevent ioreg calls interfering with subprocess mocks
+        self.crypto_patcher = patch('dynamic_alias.crypto.get_machine_id', return_value='test-machine-id')
+        self.crypto_patcher.start()
         self.cache.load()
         
         self.resolver = DataResolver(self.loader, self.cache)
         self.executor = CommandExecutor(self.resolver)
 
     def tearDown(self):
+        self.crypto_patcher.stop()
         self.temp_dir.cleanup()
 
     # =========================================================================
@@ -284,11 +288,15 @@ class TestChainingEdgeCases(unittest.TestCase):
         self.loader.load()
         
         self.cache = CacheManager(self.cache_path, enabled=True)
+        # Mock crypto to prevent ioreg calls
+        self.crypto_patcher = patch('dynamic_alias.crypto.get_machine_id', return_value='test-machine-id')
+        self.crypto_patcher.start()
         self.cache.load()
         
         self.resolver = DataResolver(self.loader, self.cache)
 
     def tearDown(self):
+        self.crypto_patcher.stop()
         self.temp_dir.cleanup()
     
     def test_unresolved_reference_keeps_placeholder(self):
