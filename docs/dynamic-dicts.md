@@ -2,6 +2,18 @@
 
 Dynamic dicts fetch data from external commands at runtime. Perfect for cloud resources, API responses, or any data that changes.
 
+## Lazy Loading
+
+Dynamic dicts are loaded **on-demand** (lazy loading). They are only resolved when:
+- The user types a command that requires the data
+- Autocompletion needs to display options from the data source
+
+This improves startup performance by avoiding unnecessary API calls. Combined with caching, this ensures minimal network overhead:
+
+1. **First use**: Resolves the dynamic dict, caches the result
+2. **Within TTL**: Uses cached data (no API call)
+3. **After TTL expires**: Re-resolves on next use
+
 ## Basic Structure
 
 ```yaml
@@ -33,7 +45,6 @@ mapping:
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `priority` | `1` | Execution order (lower = first) |
 | `timeout` | `10` | Seconds before timeout |
 | `cache-ttl` | `300` | Cache validity in seconds |
 
@@ -179,42 +190,12 @@ dya --dya-clear-all
 > [!TIP]
 > Use `--dya-clear-cache` after updating your cloud resources to force re-fetching on next use.
 
-## Priority
-
-When dynamic dicts depend on each other, use `priority`. Lower values execute first:
-
-```yaml
----
-type: dynamic_dict
-name: current_region
-priority: 1  # Executes first
-command: cat ~/.aws/last_region || echo "us-east-1"
-mapping:
-  name: region
-
----
-type: dynamic_dict
-name: vpcs
-priority: 2  # Executes after 'current_region', can use its result
-command: aws ec2 describe-vpcs --region $${current_region.name} --query 'Vpcs[].{id:VpcId,name:Tags[?Key==`Name`].Value|[0]}' --output json
-mapping:
-  id: id
-  name: name
-```
-
-In this example:
-1. `current_region` (priority 1) reads the last configured region from `~/.aws/last_region`
-2. `vpcs` (priority 2) uses `$${current_region.name}` to filter VPCs by that region
-
 ## Chaining
 
-Dynamic dicts can reference values from **static dicts** and **other dynamic dicts** with lower priority. This enables powerful chaining patterns.
+Dynamic dicts can reference values from **static dicts** and **other dynamic dicts**. This enables powerful chaining patterns. Dependencies are automatically resolved when needed (lazy resolution).
 
-### Chaining Order
-
-1. **Static dicts** are always available (no priority needed)
-2. **Dynamic dicts** with lower `priority` values are resolved first
-3. Higher priority dynamic dicts can reference lower priority ones
+> [!WARNING]
+> **Cyclic references are not allowed.** If dict A references dict B, dict B cannot reference dict A. The system will detect and report circular dependencies.
 
 ### Example: Dict → Dynamic Dict → Dynamic Dict
 
@@ -231,7 +212,6 @@ data:
 ---
 type: dynamic_dict
 name: cluster_info
-priority: 1
 command: |
   aws eks describe-cluster \
     --name $${config.prefix}-cluster \
@@ -246,7 +226,6 @@ mapping:
 ---
 type: dynamic_dict
 name: cluster_nodes
-priority: 2
 command: |
   kubectl --server=$${cluster_info.endpoint} get nodes -o json | \
     jq '[.items[] | {name: .metadata.name, ip: .status.addresses[0].address}]'
@@ -266,11 +245,11 @@ command: ssh admin@$${cluster_nodes.ip}
 ```
 config.prefix = "PROD"
       ↓
-cluster_info (priority 1) → executes with "PROD-cluster"
+cluster_info → executes with "PROD-cluster"
       ↓
 cluster_info.endpoint = "https://eks.example.com"
       ↓
-cluster_nodes (priority 2) → executes with resolved endpoint
+cluster_nodes → executes with resolved endpoint
       ↓
 command → user selects node, resolves IP
 ```
@@ -301,7 +280,6 @@ data:
 ---
 type: dynamic_dict
 name: api_status
-priority: 1
 command: |
   curl -s $${api_base.url}/$${api_base.version}/status
 mapping:
@@ -346,7 +324,6 @@ mapping:
 ---
 type: dynamic_dict
 name: ec2
-priority: 1
 timeout: 15
 cache-ttl: 300
 command: |

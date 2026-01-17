@@ -1,3 +1,13 @@
+"""
+Cache Manager Module
+
+Manages cache persistence for dynamic dicts, history, and locals.
+Includes encryption support using machine-specific identifiers.
+
+Rules:
+    1.2.28: If cache contains "_crypt", data was encrypted with machine GUID/ID
+    1.2.29: If "_crypt" does not exist and data exists, encrypt on save
+"""
 import os
 import json
 import time
@@ -5,7 +15,7 @@ from typing import Dict, List, Any, Optional
 
 from .constants import (
     CACHE_KEY_HISTORY, CACHE_KEY_LOCALS, 
-    CACHE_KEY_TIMESTAMP, CACHE_KEY_DATA
+    CACHE_KEY_TIMESTAMP, CACHE_KEY_DATA, CACHE_KEY_CRYPT
 )
 
 
@@ -16,25 +26,66 @@ class CacheManager:
         self.cache_file = cache_file
         self.enabled = enabled
         self.cache: Dict[str, Any] = {}
+        self._needs_encryption = False  # Rule 1.2.29: Track if migration needed
 
     def load(self) -> None:
-        """Load cache from disk."""
+        """
+        Load cache from disk.
+        
+        Rule 1.2.28: If "_crypt" key exists, decrypt the data.
+        Rule 1.2.29: If plain data exists, mark for encryption on save.
+        """
         if not self.enabled:
             return
-        if os.path.exists(self.cache_file):
-            try:
-                with open(self.cache_file, 'r') as f:
-                    self.cache = json.load(f)
-            except Exception as e:
-                print(f"Warning: Failed to load cache: {e}")
+        if not os.path.exists(self.cache_file):
+            return
+            
+        try:
+            with open(self.cache_file, 'r') as f:
+                raw = json.load(f)
+            
+            # Rule 1.2.28: Check for encrypted data
+            if CACHE_KEY_CRYPT in raw:
+                from .crypto import decrypt_data
+                try:
+                    self.cache = decrypt_data(raw[CACHE_KEY_CRYPT])
+                except ValueError as e:
+                    print(f"Warning: Failed to decrypt cache: {e}")
+                    print("  Cache may have been created on a different machine.")
+                    self.cache = {}
+            else:
+                # Rule 1.2.29: Plain data exists, load it and mark for encryption
+                self.cache = raw
+                if raw:  # Only mark if there's actual data
+                    self._needs_encryption = True
+                    
+        except Exception as e:
+            print(f"Warning: Failed to load cache: {e}")
 
     def save(self) -> None:
-        """Save cache to disk."""
+        """
+        Save cache to disk with encryption.
+        
+        Rule 1.2.28/1.2.29: Always save encrypted with "_crypt" key.
+        """
         if not self.enabled:
             return
         try:
+            # Ensure directory exists
+            cache_dir = os.path.dirname(self.cache_file)
+            if cache_dir:
+                os.makedirs(cache_dir, exist_ok=True)
+            
+            # Always encrypt on save
+            from .crypto import encrypt_data
+            encrypted = encrypt_data(self.cache)
+            
             with open(self.cache_file, 'w') as f:
-                json.dump(self.cache, f, indent=2)
+                json.dump({CACHE_KEY_CRYPT: encrypted}, f)
+            
+            # Reset migration flag after successful save
+            self._needs_encryption = False
+            
         except Exception as e:
             print(f"Warning: Failed to save cache: {e}")
 
@@ -214,5 +265,3 @@ class CacheManager:
             self.save()
             return True
         return False
-
-

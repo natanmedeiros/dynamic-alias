@@ -29,9 +29,9 @@ These rules must be applied to every application file
 1.2.3 - If cache is enabled, import json with the list of dynamic_dict from the file defined in the const and use if ttl is not reached
 1.2.4 - If cache is enabled, export cache to the file defined in the const after command execution with current time to future ttl validation
 1.2.5 - If cache is disabled, do not import or export cache
-1.2.6 - Create a new const to define the path of the cache file with default value of ~/.dya.json or ~/.$(customer-defined-shortcut).json
+1.2.6 - Create a new const to define the path of the cache file with default value of ~/.dya/dya.json or ~/.$(customer-defined-shortcut)/$(customer-defined-shortcut).json
 1.2.7 - Cache path can be replaced by flag originally as --dya-cache, but it is --$(customer-defined-shortcut)-cache
-1.2.8 - Create a new const to define the path of the config file with default value of ~/.dya.yaml or ~/.$(customer-defined-shortcut).yaml
+1.2.8 - Create a new const to define the path of the config file with default value of ~/.dya/dya.yaml or ~/.$(customer-defined-shortcut)/$(customer-defined-shortcut).yaml
 1.2.9 - Config file path can be replaced by flag originally as --dya-config, but can be evaluated as --$(customer-defined-shortcut)-cache
 1.2.8 - Must be possible use complete static commands and must be possible to execute dya to enter interactive mode and use autocomplete to define commands
 1.2.9 - When a command use a dynamic_dict or dict, it must be possible to use autocomplete from its values
@@ -50,13 +50,15 @@ These rules must be applied to every application file
 1.2.18.4 - CUSTOM_NAME must be used to build helper header
 1.2.19 - cache file must contain _history with command execution history limited to default last 20 but can be replaced by used defined config history-size with max of 1000
 1.2.20 - if _history exists, cache must be appended and shifted only if exceeds history-size
-1.2.21 - There is a system flag called --${shortcut}-clear-cache which if executed must purge cache entries that do not starts with underscore "_" from identified in system path e.g. ~/.${shortcut}.json or ./.${shortcut}.json or etc
+1.2.21 - There is a system flag called --${customer-defined-shortcut}-clear-cache which if executed must purge cache entries that do not starts with underscore "_" from identified in system path e.g. ~/.${customer-defined-shortcut}.json or ./.${customer-defined-shortcut}.json or etc
 1.2.22 - When try to import cache, if ttl is expired, cache entry must be purged from file
-1.2.23 - There is a system flag called --${shortcut}-clear-history which if executed must purge cache _history entry from file identified in system path e.g. ~/.${shortcut}.json or ./.${shortcut}.json or etc
-1.2.24 - There is a system flag called --${shortcut}-clear-all which if executed must delete cache file identified in system path e.g. ~/.${shortcut}.json or ./.${shortcut}.json or etc
+1.2.23 - There is a system flag called --${customer-defined-shortcut}-clear-history which if executed must purge cache _history entry from file identified in system path e.g. ~/.${customer-defined-shortcut}.json or ./.${customer-defined-shortcut}.json or etc
+1.2.24 - There is a system flag called --${customer-defined-shortcut}-clear-all which if executed must delete cache file identified in system path e.g. ~/.${shortcut}.json or ./.${customer-defined-shortcut}.json or etc
 1.2.25 - There is locals variables defined in cache file as "_locals" and is a key/value storage and can be used with $${locals.$key}, e.g. $${locals.test_filepath}
-1.2.26 - There is a system flag called --${shortcut}-set-locals to be used to set ou replace locals variables, e.g. dya --dya-cache ~/.dya.json --dya-set-locals "my_key" "my_value"
-1.2.27 - There is a system flag called --${shortcut}-clear-locals which if executed must purge cache _locals entry from file identified in system path e.g. ~/.${shortcut}.json or ./.${shortcut}.json or etc
+1.2.26 - There is a system flag called --${customer-defined-shortcut}-set-locals to be used to set ou replace locals variables, e.g. dya --dya-cache ~/.dya/dya.json --dya-set-locals "my_key" "my_value"
+1.2.27 - There is a system flag called --${customer-defined-shortcut}-clear-locals which if executed must purge cache _locals entry from file identified in system path e.g. ~/.${customer-defined-shortcut}.json or ./.${customer-defined-shortcut}.json or etc
+1.2.28 - if ~/.${customer-defined-shortcut}/${customer-defined-shortcut}.json contains "_crypt", data was encrypted with windows machine guid or linux/macos machine id and must be decrypted with it
+1.2.29 - if "_crypt" does not exists and already have data in json, data must be encrypted and json file replace by new one with "_crypt" key, this will guarantee backwards compatibility
 1.3 - Helper
 1.3.1 - The helper can be displayed by using flag -h or --help
 1.3.2 - Can't use -h or --help as command args, these flags are restricted

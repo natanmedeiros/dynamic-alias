@@ -40,7 +40,7 @@ sudo dpkg -i deb_dist/python3-dynamic-alias_*.deb
 
 ## First Configuration
 
-Create `~/.dya.yaml`:
+Create `~/.dya/dya.yaml` (the directory will be created automatically on first run):
 
 ```yaml
 config:
@@ -71,8 +71,8 @@ dya
 ## Config and Cache Paths
 
 By default:
-- **Config:** `~/.dya.yaml`
-- **Cache:** `~/.dya.json`
+- **Config:** `~/.dya/dya.yaml`
+- **Cache:** `~/.dya/dya.json` (automatically encrypted)
 
 Override with flags:
 ```bash

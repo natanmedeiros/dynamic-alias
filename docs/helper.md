@@ -34,7 +34,7 @@ db production
         Connect to a PostgreSQL database
 
     Usage:
-        db production
+        db production [-o | --output] [query ${sql}]
 
     Args:
         -o, --output ${file}    Output log file path
@@ -44,7 +44,15 @@ db production
 
             Description:
                 Run a SQL query
+
+            Usage:
+                db production query ${sql}
 ```
+
+The **Usage** section shows:
+- **Matched path**: `db production` - what you typed to get here
+- **Optional args**: `[-o | --output]` - available argument flags
+- **Optional subs**: `[query ${sql}]` - available subcommands with their args recursively
 
 ### Custom
 

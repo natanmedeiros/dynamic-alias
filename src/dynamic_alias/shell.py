@@ -28,10 +28,98 @@ class CacheHistory(History):
          # To fix this, we disable saving here and manually handle it in the main loop (synchronously).
          pass
 
+import json
+
 class InteractiveShell:
     def __init__(self, resolver: DataResolver, executor: CommandExecutor):
         self.resolver = resolver
         self.executor = executor
+        # Management flags supported in interactive mode
+        self._management_flags = {
+            f"--{CUSTOM_SHORTCUT}-clear-cache": self._cmd_clear_cache,
+            f"--{CUSTOM_SHORTCUT}-clear-history": self._cmd_clear_history,
+            f"--{CUSTOM_SHORTCUT}-clear-all": self._cmd_clear_all,
+            f"--{CUSTOM_SHORTCUT}-clear-locals": self._cmd_clear_locals,
+            f"--{CUSTOM_SHORTCUT}-set-locals": self._cmd_set_locals,
+            f"--{CUSTOM_SHORTCUT}-dump": self._cmd_dump,
+        }
+        # Flags that are NOT supported in interactive mode
+        self._unsupported_flags = {
+            f"--{CUSTOM_SHORTCUT}-config",
+            f"--{CUSTOM_SHORTCUT}-cache",
+        }
+    
+    def _handle_interactive_management(self, parts: list) -> bool:
+        """
+        Handle management flags in interactive mode.
+        Returns True if a management command was handled, False otherwise.
+        """
+        if not parts:
+            return False
+        
+        flag = parts[0]
+        
+        # Check for unsupported flags
+        if flag in self._unsupported_flags:
+            print(f"Error: {flag} is not supported in interactive mode.")
+            print("  Hint: Use this flag when starting from command line, e.g.:")
+            print(f"    {CUSTOM_SHORTCUT} {flag} <path>")
+            return True
+        
+        # Check for management flags
+        if flag in self._management_flags:
+            handler = self._management_flags[flag]
+            handler(parts[1:])
+            return True
+        
+        return False
+    def _get_output(self):
+        """Get the output strategy for current verbosity level."""
+        from .output import get_output_strategy
+        return get_output_strategy(self.resolver.config.global_config.verbosity)
+    
+    def _cmd_clear_cache(self, args: list):
+        """Clear dynamic dict cache (keeps history)."""
+        count = self.resolver.cache.clear_cache()
+        self._get_output().verbose_log(f"[VERBOSE] Cache modified: cleared {count} dynamic dict entries")
+        print(f"Cleared {count} cache entries (history preserved)")
+    
+    def _cmd_clear_history(self, args: list):
+        """Clear command history."""
+        if self.resolver.cache.clear_history():
+            print("Command history cleared")
+        else:
+            print("No history to clear")
+    
+    def _cmd_clear_all(self, args: list):
+        """Delete entire cache file."""
+        if self.resolver.cache.delete_all():
+            self._get_output().verbose_log(f"[VERBOSE] Cache file deleted: {self.resolver.cache.cache_file}")
+            print(f"Cache file deleted: {self.resolver.cache.cache_file}")
+        else:
+            print(f"Cache file not found: {self.resolver.cache.cache_file}")
+    
+    def _cmd_clear_locals(self, args: list):
+        """Clear all local variables."""
+        if self.resolver.cache.clear_locals():
+            self._get_output().verbose_log("[VERBOSE] Cache modified: cleared all _locals")
+            print("Local variables cleared")
+        else:
+            print("No local variables to clear")
+    
+    def _cmd_set_locals(self, args: list):
+        """Set a local variable."""
+        if len(args) < 2:
+            print(f"Error: --{CUSTOM_SHORTCUT}-set-locals requires <key> <value>")
+            return
+        key, value = args[0], args[1]
+        self.resolver.cache.set_local(key, value)
+        self._get_output().verbose_log(f"[VERBOSE] Cache modified: set _locals.{key} = '{value}'")
+        print(f"Local variable set: {key}={value}")
+    
+    def _cmd_dump(self, args: list):
+        """Print decrypted cache as JSON."""
+        print(json.dumps(self.resolver.cache.cache, indent=2, ensure_ascii=False))
 
     def run(self):
         # Register SIGTERM handler for graceful cleanup when killed
@@ -133,12 +221,17 @@ class InteractiveShell:
 
                     if text in ['exit', 'quit']:
                         break
-                        
+                    
                     import shlex
                     try:
                         parts = shlex.split(text)
                     except ValueError:
                         print("Error: Invalid quotes")
+                        continue
+                    
+                    # Handle management flags in interactive mode
+                    # Note: config/cache path flags are NOT supported in interactive mode
+                    if self._handle_interactive_management(parts):
                         continue
                         
                     result = self.executor.find_command(parts)

@@ -18,7 +18,8 @@ class VariableResolver:
 
     @staticmethod
     def resolve_app_vars(text: str, resolver_func: Callable[[str], List[Dict]], 
-                         context_vars: Dict[str, Any] = None, use_local_cache: Callable[[str], Any] = None) -> str:
+                         context_vars: Dict[str, Any] = None, use_local_cache: Callable[[str], Any] = None,
+                         verbose_log: Callable[[str], None] = None) -> str:
         """
         Replace $${source.key} or $${source[N].key} in text using specific resolver logic.
         
@@ -27,6 +28,7 @@ class VariableResolver:
             resolver_func: Callback(source_name) -> List[Dict] (returns data list or empty list)
             context_vars: Optional dict of variables already resolved context (e.g. from alias match)
             use_local_cache: Optional callback(key) -> value for resolving $${locals.key}
+            verbose_log: Optional callback(message) for verbose logging
         
         Access Modes:
             - List Mode (context_vars): Uses matched item, ignores index
@@ -47,6 +49,8 @@ class VariableResolver:
             if source == 'locals' and use_local_cache:
                 val = use_local_cache(key)
                 if val is not None:
+                    if verbose_log:
+                        verbose_log(f"[VERBOSE] Resolved $${{locals.{key}}} = '{val}'")
                     return str(val)
                 return match.group(0)
 
@@ -56,7 +60,10 @@ class VariableResolver:
             if source in context_vars and index_str is None:
                 item = context_vars[source]
                 if isinstance(item, dict):
-                    return str(item.get(key, match.group(0)))
+                    resolved_val = str(item.get(key, match.group(0)))
+                    if verbose_log:
+                        verbose_log(f"[VERBOSE] Resolved $${{{source}.{key}}} = '{resolved_val}' (from context)")
+                    return resolved_val
             
             # 3. Handle lazy resolution (priority 3) - Direct Mode
             # Resolve source on demand and use specified index (default 0)
@@ -64,7 +71,11 @@ class VariableResolver:
             if data_list:
                 # Validate index bounds
                 if index < len(data_list):
-                    return str(data_list[index].get(key, match.group(0)))
+                    resolved_val = str(data_list[index].get(key, match.group(0)))
+                    if verbose_log:
+                        index_display = f"[{index}]" if index_str else ""
+                        verbose_log(f"[VERBOSE] Resolved $${{{source}{index_display}.{key}}} = '{resolved_val}'")
+                    return resolved_val
                 else:
                     # Index out of bounds - log warning and return original
                     print(f"Warning: Index {index} out of bounds for '{source}' (size: {len(data_list)})")

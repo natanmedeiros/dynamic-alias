@@ -69,10 +69,10 @@ class TestHistoryIntegration(unittest.TestCase):
         self.assertGreater(len(history), 0)
         self.assertIn("test_create", history)
         
-        # Verify persisted to file
-        with open(DYA_JSON_PATH, 'r') as f:
-            data = json.load(f)
-        self.assertIn('_history', data)
+        # Verify persisted to file (reload via CacheManager to handle encryption)
+        reload_cache = CacheManager(DYA_JSON_PATH, enabled=True)
+        reload_cache.load()
+        self.assertIn('_history', reload_cache.cache)
     
     def test_history_append(self):
         """Test: Append to existing history"""
@@ -150,8 +150,10 @@ class TestHistoryIntegration(unittest.TestCase):
         self.cache.add_history("no_ttl_test", self.history_limit)
         self.cache.save()
         
-        with open(DYA_JSON_PATH, 'r') as f:
-            data = json.load(f)
+        # Reload via CacheManager to handle encryption
+        reload_cache = CacheManager(DYA_JSON_PATH, enabled=True)
+        reload_cache.load()
+        data = reload_cache.cache
         
         # _history should be list of strings
         self.assertIsInstance(data['_history'], list)

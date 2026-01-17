@@ -25,6 +25,7 @@ class DynamicAliasCLI:
         self.clear_all_flag = f"--{CUSTOM_SHORTCUT}-clear-all"
         self.set_locals_flag = f"--{CUSTOM_SHORTCUT}-set-locals"
         self.clear_locals_flag = f"--{CUSTOM_SHORTCUT}-clear-locals"
+        self.dump_flag = f"--{CUSTOM_SHORTCUT}-dump"
         self.dya_help_flag = f"--{CUSTOM_SHORTCUT}-help"
 
     def run(self):
@@ -52,7 +53,7 @@ class DynamicAliasCLI:
             sys.exit(exit_code)
             
         # Handle Cache/Locals Management
-        if self._handle_management_flags(parsed, final_cache_path):
+        if self._handle_management_flags(parsed, final_cache_path, final_config_path):
             return
 
         # Ensure Config (SHA Check)
@@ -62,6 +63,10 @@ class DynamicAliasCLI:
         self._execute_app(parsed.filtered_args, final_config_path, final_cache_path)
 
     def _execute_app(self, filtered_args: List[str], config_path: str, cache_path: str):
+        import time
+        
+        # Load config with timing
+        config_start = time.time()
         loader = ConfigLoader(config_path)
         try:
             loader.load()
@@ -76,28 +81,44 @@ class DynamicAliasCLI:
             else:
                 print(f"Error: {e}")
                 sys.exit(1)
+        config_elapsed = time.time() - config_start
         
-        verbose = loader.global_config.verbose
-        if verbose:
-            print(f"[VERBOSE] Loaded configuration from: {config_path}")
+        # Get output strategy for verbosity level
+        from .output import get_output_strategy
+        output = get_output_strategy(loader.global_config.verbosity)
+        output.verbose_log(f"[VERBOSE] Loaded configuration from: {config_path}")
+        output.trace_log("ConfigLoader", "load", config_elapsed,
+                        inputs={"path": config_path},
+                        output=f"{len(loader.commands)} commands, {len(loader.dicts)} dicts, {len(loader.dynamic_dicts)} dynamic_dicts")
         
-        # Silent validation at startup
+        # Silent validation at startup with timing
+        validation_start = time.time()
         if not validate_config_silent(config_path, CUSTOM_SHORTCUT):
             sys.exit(1)
+        validation_elapsed = time.time() - validation_start
+        output.trace_log("ConfigValidator", "validate", validation_elapsed,
+                        inputs={"path": config_path},
+                        output="passed")
         
+        # Load cache with timing
+        cache_start = time.time()
         cache = CacheManager(cache_path, True) # CACHE_ENABLED is typically True
         cache_existed = os.path.exists(cache_path)
         cache.load()
+        cache_elapsed = time.time() - cache_start
         
-        if verbose:
-            if cache_existed:
-                print(f"[VERBOSE] Loaded cache from: {cache_path}")
-            else:
-                print(f"[VERBOSE] Created new cache file: {cache_path}")
-            
-            history = cache.get_history()
-            if history:
-                print(f"[VERBOSE] Loaded {len(history)} history entries")
+        if cache_existed:
+            output.verbose_log(f"[VERBOSE] Loaded cache from: {cache_path}")
+        else:
+            output.verbose_log(f"[VERBOSE] Created new cache file: {cache_path}")
+        
+        history = cache.get_history()
+        if history:
+            output.verbose_log(f"[VERBOSE] Loaded {len(history)} history entries")
+        
+        output.trace_log("CacheManager", "load", cache_elapsed,
+                        inputs={"path": cache_path, "existed": cache_existed},
+                        output=f"{len(history) if history else 0} history entries")
         
         resolver = DataResolver(loader, cache)
         executor = CommandExecutor(resolver)
@@ -134,6 +155,7 @@ class DynamicAliasCLI:
             self.set_locals_key: Optional[str] = None
             self.set_locals_value: Optional[str] = None
             self.clear_locals = False
+            self.dump_cache = False
             self.filtered_args: List[str] = []
             self.should_exit = False
 
@@ -179,32 +201,55 @@ class DynamicAliasCLI:
             elif arg == self.clear_locals_flag:
                 parsed.clear_locals = True
                 i += 1
+            elif arg == self.dump_flag:
+                parsed.dump_cache = True
+                i += 1
             else:
                 parsed.filtered_args.append(arg)
                 i += 1
         return parsed
 
     def _resolve_paths(self, parsed: 'ParsedArgs'):
+        # Rule 1.2.6/1.2.8: New default paths in ~/.${shortcut}/ directory
         if parsed.config_override:
             final_config = os.path.expanduser(parsed.config_override)
         else:
             final_config = resolve_path(
-                [f".{CUSTOM_SHORTCUT}.yaml", f"{CUSTOM_SHORTCUT}.yaml", f"~/.{CUSTOM_SHORTCUT}.yaml", f"~/{CUSTOM_SHORTCUT}.yaml"],
-                f"~/.{CUSTOM_SHORTCUT}.yaml"
+                [f".{CUSTOM_SHORTCUT}.yaml", f"{CUSTOM_SHORTCUT}.yaml", 
+                 f"~/.{CUSTOM_SHORTCUT}/{CUSTOM_SHORTCUT}.yaml"],
+                f"~/.{CUSTOM_SHORTCUT}/{CUSTOM_SHORTCUT}.yaml"
             )
 
         if parsed.cache_override:
             final_cache = os.path.expanduser(parsed.cache_override)
         else:
             final_cache = resolve_path(
-                [f".{CUSTOM_SHORTCUT}.json", f"{CUSTOM_SHORTCUT}.json", f"~/.{CUSTOM_SHORTCUT}.json", f"~/{CUSTOM_SHORTCUT}.json"],
-                f"~/.{CUSTOM_SHORTCUT}.json"
+                [f".{CUSTOM_SHORTCUT}.json", f"{CUSTOM_SHORTCUT}.json", 
+                 f"~/.{CUSTOM_SHORTCUT}/{CUSTOM_SHORTCUT}.json"],
+                f"~/.{CUSTOM_SHORTCUT}/{CUSTOM_SHORTCUT}.json"
             )
         return final_config, final_cache
 
-    def _handle_management_flags(self, parsed: 'ParsedArgs', cache_path: str) -> bool:
+    def _handle_management_flags(self, parsed: 'ParsedArgs', cache_path: str, config_path: str = None) -> bool:
         """Returns True if execution should stop (action performed)."""
-        if parsed.clear_cache or parsed.clear_history or parsed.clear_all or parsed.set_locals_key or parsed.clear_locals:
+        if parsed.clear_cache or parsed.clear_history or parsed.clear_all or parsed.set_locals_key or parsed.clear_locals or parsed.dump_cache:
+            import json
+            from .output import get_output_strategy
+            from .constants import VERBOSITY_DEFAULT
+            
+            # Try to load config to get verbosity setting
+            verbosity = VERBOSITY_DEFAULT
+            if config_path:
+                try:
+                    from .config import ConfigLoader
+                    loader = ConfigLoader(config_path)
+                    loader.load()
+                    verbosity = loader.global_config.verbosity
+                except Exception:
+                    pass  # Config load failed - use default
+            
+            output = get_output_strategy(verbosity)
+            
             cache = CacheManager(cache_path, True)
             try:
                 cache.load()
@@ -214,8 +259,14 @@ class DynamicAliasCLI:
                 print(f"  Action: Attempted to load cache for --{self.clear_cache_flag.lstrip('--')} or related flag")
                 print(f"  Cache path: {cache_path}")
             
+            if parsed.dump_cache:
+                # Print decrypted cache as JSON
+                print(json.dumps(cache.cache, indent=2, ensure_ascii=False))
+                return True
+            
             if parsed.clear_all:
                 if cache.delete_all():
+                    output.verbose_log(f"[VERBOSE] Cache file deleted: {cache_path}")
                     print(f"Cache file deleted: {cache_path}")
                 else:
                     print(f"Cache file not found: {cache_path}")
@@ -223,6 +274,7 @@ class DynamicAliasCLI:
             
             if parsed.clear_cache:
                 count = cache.clear_cache()
+                output.verbose_log(f"[VERBOSE] Cache modified: cleared {count} dynamic dict entries")
                 print(f"Cleared {count} cache entries (history preserved)")
             
             if parsed.clear_history:
@@ -233,10 +285,12 @@ class DynamicAliasCLI:
             
             if parsed.set_locals_key:
                 cache.set_local(parsed.set_locals_key, parsed.set_locals_value)
+                output.verbose_log(f"[VERBOSE] Cache modified: set _locals.{parsed.set_locals_key} = '{parsed.set_locals_value}'")
                 print(f"Local variable set: {parsed.set_locals_key}={parsed.set_locals_value}")
             
             if parsed.clear_locals:
                 if cache.clear_locals():
+                    output.verbose_log("[VERBOSE] Cache modified: cleared all _locals")
                     print("Local variables cleared")
                 else:
                     print("No local variables to clear")
@@ -247,7 +301,8 @@ class DynamicAliasCLI:
     def _ensure_default_config(self):
         # Rules 1.1.12, 1.1.13 + SHA Enforcement
         bundled = os.path.join(os.path.dirname(__file__), f"{CUSTOM_SHORTCUT}.yaml")
-        user_home = os.path.expanduser(f"~/.{CUSTOM_SHORTCUT}.yaml")
+        user_dir = os.path.expanduser(f"~/.{CUSTOM_SHORTCUT}")
+        user_home = os.path.join(user_dir, f"{CUSTOM_SHORTCUT}.yaml")
         
         if os.path.exists(bundled):
             should_copy = False
@@ -268,6 +323,8 @@ class DynamicAliasCLI:
 
             if should_copy:
                 try:
+                    # Ensure directory exists before copying
+                    os.makedirs(user_dir, exist_ok=True)
                     shutil.copy(bundled, user_home)
                     print(f"[{CUSTOM_NAME}] Updating default configuration from bundle: {reason}")
                 except Exception as e:
@@ -311,6 +368,7 @@ class DynamicAliasCLI:
         print(f"  {self.clear_all_flag}          : Delete entire cache file")
         print(f"  {self.set_locals_flag} <k> <v> : Set a local variable")
         print(f"  {self.clear_locals_flag}       : Clear all local variables")
+        print(f"  {self.dump_flag}               : Print decrypted cache as JSON")
         print(f"  {self.dya_help_flag}               : Display this command line builder help")
         print("\nDocumentation:")
         print("  https://github.com/natanmedeiros/dynamic-alias?tab=readme-ov-file#documentation")

@@ -34,6 +34,9 @@ class TestShellSync(unittest.TestCase):
         
     def test_run_loop_syncs_cache(self):
         """InteractiveShell.run should reload cache before saving history."""
+        from dynamic_alias.crypto import encrypt_data
+        from dynamic_alias.constants import CACHE_KEY_CRYPT
+        
         # 1. Setup initial cache state
         cache = CacheManager(self.cache_path, enabled=True)
         cache.set_local('key', 'initial')
@@ -42,13 +45,14 @@ class TestShellSync(unittest.TestCase):
         executor = CommandExecutor(resolver)
         shell = InteractiveShell(resolver, executor)
         
-        # 2. Simulate external process changing the file
+        # 2. Simulate external process changing the file (encrypted)
         external_data = {
             '_locals': {'key': 'updated_by_subprocess'},
             '_history': ['initial_cmd']
         }
+        encrypted = encrypt_data(external_data)
         with open(self.cache_path, 'w') as f:
-            json.dump(external_data, f)
+            json.dump({CACHE_KEY_CRYPT: encrypted}, f)
             
         # 3. Mock PromptSession and related
         with patch('dynamic_alias.shell.PromptSession') as MockSession, \
@@ -66,13 +70,13 @@ class TestShellSync(unittest.TestCase):
         # The cache object in shell.resolver.cache should have the new value
         self.assertEqual(resolver.cache.get_local('key'), 'updated_by_subprocess')
         
-        # 5. Verify file contains merged state
-        with open(self.cache_path, 'r') as f:
-            saved_data = json.load(f)
+        # 5. Verify file contains merged state (reload via CacheManager)
+        reload_cache = CacheManager(self.cache_path, enabled=True)
+        reload_cache.load()
             
-        self.assertEqual(saved_data['_locals']['key'], 'updated_by_subprocess')
-        self.assertIn('new_command', saved_data['_history'])
-        self.assertIn('initial_cmd', saved_data['_history'])
+        self.assertEqual(reload_cache.get_local('key'), 'updated_by_subprocess')
+        self.assertIn('new_command', reload_cache.get_history())
+        self.assertIn('initial_cmd', reload_cache.get_history())
 
 if __name__ == "__main__":
     unittest.main()

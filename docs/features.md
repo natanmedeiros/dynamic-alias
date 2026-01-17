@@ -146,6 +146,7 @@ Manage your cache with these flags:
 | `--dya-clear-cache` | Remove cached dynamic dict data (keeps history) |
 | `--dya-clear-history` | Clear command history |
 | `--dya-clear-all` | Delete entire cache file |
+| `--dya-dump` | Print decrypted cache as JSON |
 
 **Examples:**
 
@@ -160,11 +161,32 @@ dya --dya-clear-history
 
 # Delete entire cache file (fresh start)
 dya --dya-clear-all
-# Output: Cache file deleted: ~/.dya.json
+# Output: Cache file deleted: ~/.dya/dya.json
 ```
 
 > [!NOTE]
 > Expired cache entries are automatically purged when loading the cache, based on each dynamic dict's `cache-ttl` setting.
+
+### Interactive Mode Support
+
+Management flags also work in interactive mode:
+
+```bash
+dya> --dya-clear-cache
+Cleared 5 cache entries (history preserved)
+
+dya> --dya-set-locals mykey myvalue
+Local variable set: mykey=myvalue
+
+dya> --dya-dump
+{
+  "_history": ["cmd1", "cmd2"],
+  "_locals": {"mykey": "myvalue"}
+}
+```
+
+> [!WARNING]
+> The `--dya-config` and `--dya-cache` flags are NOT supported in interactive mode. Use them when starting from command line.
 
 ## Locals Management
 
@@ -216,13 +238,12 @@ dya --dya-validate --dya-config ./path/to/config.yaml
   [✓] Valid YAML syntax
   [✓] Config block has valid keys
   [✓] All dict/dynamic_dict references are valid
-  [✓] Priority order is correct
 
   ----------------------------------------
   SUMMARY
   ----------------------------------------
 
-  ✓ All 5 checks passed!
+  ✓ All 4 checks passed!
 
   Configuration is valid.
 ============================================================
@@ -251,7 +272,142 @@ Fix the 1 error(s) above or run 'dya --dya-validate' for full report.
 | **Required fields** | Each block type must have required fields |
 | **Config keys** | Only valid keys in config block |
 | **References** | All `$${source.key}` must reference defined sources |
-| **Priority order** | Dynamic dicts must respect priority when referencing others |
+
+## Cache Encryption
+
+Cache data is automatically encrypted.
+
+### How It Works
+
+The cache file is encrypted using AES-256-GCM with a machine-specific key.
+
+### Automatic Migration
+
+Existing plain JSON cache files are automatically encrypted on the first save after upgrading.
+
+### Encrypted Cache Structure
+
+```json
+{
+  "_crypt": "base64-encoded-encrypted-data..."
+}
+```
+
+> [!WARNING]
+> **Data is tied to this machine.** If you reinstall your operating system or copy the cache file to another machine, encrypted data will become inaccessible. This only affects cached dynamic dict data, history, and locals — not your configuration file.
+
+### Viewing Cache Contents
+
+To view the decrypted cache contents:
+
+```bash
+dya --dya-dump
+```
+
+This outputs the cache as plain JSON, useful for debugging or backup purposes.
+
+### Migrating Cache to Another Machine
+
+To transfer cache data to another machine:
+
+1. **Export** the cache as plain JSON:
+   ```bash
+   dya --dya-dump > cache-backup.json
+   ```
+
+2. **Copy** `cache-backup.json` to the new machine.
+
+3. **Place** the file at the default cache location:
+   - `~/.dya/dya.json` (or your custom shortcut directory)
+
+4. **Run any command** — the application will automatically detect the plain JSON and re-encrypt it with the new machine's key on first save.
+
+## Verbosity Levels
+
+Control the amount of output with the `verbosity` configuration option.
+
+### Configuration
+
+```yaml
+config:
+  verbosity: verbose  # silent | default | verbose | trace
+```
+
+### Available Levels
+
+| Level | Description |
+|-------|-------------|
+| `silent` | No "Running:" hint, no dividers — minimal output |
+| `default` | Standard output with "Running:" and dividers |
+| `verbose` | All default + variable resolution logs, cache modifications |
+| `trace` | All verbose + method timing with input/output |
+
+### Examples
+
+**Silent Mode** — Ideal for scripting:
+```yaml
+config:
+  verbosity: silent
+```
+```bash
+dya simple
+# Output: simple (no "Running: echo simple" prefix)
+```
+
+**Verbose Mode** — Shows what's happening:
+```yaml
+config:
+  verbosity: verbose
+```
+```
+[VERBOSE] Loaded configuration from: ~/.dya/dya.yaml
+[VERBOSE] Loaded cache from: ~/.dya/dya.json
+[VERBOSE] Resolved $${servers.host} = '192.168.1.1' (from context)
+Running: ping 192.168.1.1
+------------------------------
+```
+
+**Trace Mode** — Full debugging with method timing:
+```yaml
+config:
+  verbosity: trace
+```
+
+**Startup traces:**
+```
+[TRACE] ConfigLoader.load (0.0123s)
+  Input: {"path": "./tests/dya.yaml"}
+  Output: "15 commands, 3 dicts, 2 dynamic_dicts"
+[TRACE] ConfigValidator.validate (0.0045s)
+  Input: {"path": "./tests/dya.yaml"}
+  Output: "passed"
+[TRACE] CacheManager.load (0.0089s)
+  Input: {"path": "~/.dya/dya.json", "existed": true}
+  Output: "5 history entries"
+```
+
+**Execution traces:**
+```
+[TRACE] DataResolver._execute_dynamic_source (0.4023s)
+  Input: {"name": "dynamic_nodes", "command": "powershell -NoProfile -Comma..."}
+  Output: "2 items"
+[TRACE] VariableResolver.resolve_app_vars (0.5512s)
+  Input: {"template": "echo $${dynamic_nodes.ip}", "variables": {...}}
+  Output: "echo 10.0.0.1"
+```
+
+> **Note**: In interactive mode, trace logs are buffered and printed after command execution to avoid breaking the prompt.
+
+### Migration from `verbose`
+
+The old `verbose: true/false` is deprecated. Use `verbosity` instead:
+
+| Old | New |
+|-----|-----|
+| `verbose: true` | `verbosity: verbose` |
+| `verbose: false` | `verbosity: default` |
+
+> The validator will warn if you're using the deprecated `verbose` key.
 
 ## BOM Handling
 
@@ -262,4 +418,5 @@ Config files with UTF-8 BOM (Byte Order Mark) are automatically handled. This en
 | ← Previous | Next → |
 |:-----------|-------:|
 | [Helper System](helper.md) | [Interactive Mode](interactive-mode.md) |
+
 

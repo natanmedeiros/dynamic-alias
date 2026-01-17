@@ -11,16 +11,45 @@ class DataResolver:
         self.config = config
         self.cache = cache
         self.resolved_data: Dict[str, List[Dict[str, Any]]] = {}
-        self.verbose_log_buffer: List[str] = []  # Buffer for verbose logs during interactive mode
+        self.verbose_log_buffer: List[str] = []  # Buffer for verbose/trace logs during interactive mode
         self._resolution_stack: set = set()  # Track currently resolving dicts for circular reference detection
     
     def add_verbose_log(self, message: str):
         """Add a verbose log message to the buffer (for interactive mode)."""
-        if self.config.global_config.verbose:
+        from .output import get_output_strategy
+        output = get_output_strategy(self.config.global_config.verbosity)
+        if output.is_verbose:
             self.verbose_log_buffer.append(message)
     
+    def add_trace_log(self, class_name: str, method: str, elapsed: float, 
+                      inputs=None, output_val=None):
+        """Add a trace log message to the buffer (for interactive mode)."""
+        from .output import get_output_strategy
+        out = get_output_strategy(self.config.global_config.verbosity)
+        if out.is_trace:
+            # Format the trace log as a string for the buffer
+            parts = [f"[TRACE] {class_name}.{method} ({elapsed:.4f}s)"]
+            if inputs is not None:
+                try:
+                    import json
+                    inputs_str = json.dumps(inputs, ensure_ascii=False, default=str)
+                    if len(inputs_str) > 200:
+                        inputs_str = inputs_str[:200] + "..."
+                    parts.append(f"  Input: {inputs_str}")
+                except Exception:
+                    parts.append(f"  Input: <unable to serialize>")
+            if output_val is not None:
+                try:
+                    output_str = str(output_val)
+                    if len(output_str) > 200:
+                        output_str = output_str[:200] + "..."
+                    parts.append(f"  Output: {output_str}")
+                except Exception:
+                    parts.append(f"  Output: <unable to serialize>")
+            self.verbose_log_buffer.append("\n".join(parts))
+    
     def flush_verbose_logs(self):
-        """Print and clear all buffered verbose logs."""
+        """Print and clear all buffered verbose/trace logs."""
         for msg in self.verbose_log_buffer:
             print(msg)
         self.verbose_log_buffer.clear()
@@ -42,7 +71,8 @@ class DataResolver:
         Resolve a single dict/dynamic_dict on-demand (lazy loading).
         Uses cache if available, otherwise executes command and caches result.
         """
-        verbose = self.config.global_config.verbose
+        import time
+        resolve_start = time.time()
         
         # Already resolved - return result from memory (no verbose log - too noisy during autocomplete)
         if name in self.resolved_data:
@@ -51,6 +81,10 @@ class DataResolver:
         # Check static dicts first (no circular reference risk)
         if name in self.config.dicts:
             self.resolved_data[name] = self.config.dicts[name].data
+            elapsed = time.time() - resolve_start
+            self.add_trace_log("DataResolver", "resolve_one", elapsed,
+                             inputs={"name": name, "type": "dict"},
+                             output_val=f"{len(self.resolved_data[name])} items")
             return self.resolved_data[name]
         
         # Check dynamic dicts
@@ -68,12 +102,13 @@ class DataResolver:
                 dd = self.config.dynamic_dicts[name]
                 data = self.cache.get(name, ttl=dd.cache_ttl)
                 if data is None:
-                    import time
-                    start_time = time.time()
+                    exec_start = time.time()
                     data = self._execute_dynamic_source(dd)
-                    elapsed = time.time() - start_time
-                    if verbose:
-                        self.add_verbose_log(f"[VERBOSE] Executed dynamic_dict '{name}' in {elapsed:.2f}s")
+                    exec_elapsed = time.time() - exec_start
+                    self.add_verbose_log(f"[VERBOSE] Executed dynamic_dict '{name}' in {exec_elapsed:.2f}s")
+                    self.add_trace_log("DataResolver", "_execute_dynamic_source", exec_elapsed,
+                                     inputs={"name": name, "command": dd.command[:50] + "..."},
+                                     output_val=f"{len(data) if data else 0} items")
                     
                     # Warning log for null/empty results
                     if data is None:
@@ -93,8 +128,12 @@ class DataResolver:
                     if len(data) == 0:
                         print(f"Warning: dynamic_dict '{name}' has empty cached data")
                         print(f"  Suggestion: Run --dya-clear-cache to refresh")
-                    if verbose:
-                        self.add_verbose_log(f"[VERBOSE] Loaded dynamic_dict '{name}' from cache")
+                    self.add_verbose_log(f"[VERBOSE] Loaded dynamic_dict '{name}' from cache")
+                    elapsed = time.time() - resolve_start
+                    self.add_trace_log("DataResolver", "resolve_one", elapsed,
+                                     inputs={"name": name, "type": "dynamic_dict", "source": "cache"},
+                                     output_val=f"{len(data)} items")
+                
                 self.resolved_data[name] = data
                 return self.resolved_data[name]
             finally:

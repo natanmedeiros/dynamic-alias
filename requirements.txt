@@ -1,3 +1,4 @@
-prompt_toolkit
-pyyaml
+prompt_toolkit==3.0.52
+pyyaml==6.0.3
+cryptography==46.0.3
 build

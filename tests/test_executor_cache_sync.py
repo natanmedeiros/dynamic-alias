@@ -50,8 +50,12 @@ command: echo test
     def tearDown(self):
         self.temp_dir.cleanup()
         
-    def test_execute_reloads_cache_after_subprocess(self):
+    @patch('dynamic_alias.crypto.get_machine_id', return_value='test-machine-id')
+    def test_execute_reloads_cache_after_subprocess(self, mock_machine_id):
         """Executor should reload cache after subprocess to pick up external changes."""
+        from dynamic_alias.crypto import encrypt_data, decrypt_data
+        from dynamic_alias.constants import CACHE_KEY_CRYPT
+        
         # 1. Setup initial cache
         cache = CacheManager(self.cache_path, enabled=True)
         cache.set_local('key', 'initial')
@@ -68,12 +72,15 @@ command: echo test
         original_subprocess_run = __import__('subprocess').run
         
         def mock_subprocess_run(*args, **kwargs):
-            # Simulate subprocess modifying the cache file
+            # Simulate subprocess modifying the cache file (handling encryption)
             with open(self.cache_path, 'r') as f:
-                data = json.load(f)
+                raw = json.load(f)
+            # Decrypt, modify, encrypt
+            data = decrypt_data(raw[CACHE_KEY_CRYPT])
             data['_locals']['key'] = 'modified_by_subprocess'
+            encrypted = encrypt_data(data)
             with open(self.cache_path, 'w') as f:
-                json.dump(data, f)
+                json.dump({CACHE_KEY_CRYPT: encrypted}, f)
             return MagicMock(returncode=0)
         
         # 4. Execute with mocked subprocess
@@ -84,9 +91,9 @@ command: echo test
         self.assertEqual(cache.get_local('key'), 'modified_by_subprocess')
         
         # 6. Verify disk file also has the value (wasn't overwritten)
-        with open(self.cache_path, 'r') as f:
-            saved_data = json.load(f)
-        self.assertEqual(saved_data['_locals']['key'], 'modified_by_subprocess')
+        reload_cache = CacheManager(self.cache_path, enabled=True)
+        reload_cache.load()
+        self.assertEqual(reload_cache.get_local('key'), 'modified_by_subprocess')
 
 
 if __name__ == "__main__":

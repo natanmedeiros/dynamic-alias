@@ -1,7 +1,7 @@
 config:
   style-completion: "bg:#002222 #ffffff"
   history-size: 5
-  verbose: true
+  verbosity: trace
 
 ---
 type: dict

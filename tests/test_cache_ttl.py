@@ -57,12 +57,14 @@ class TestCacheTTL(unittest.TestCase):
             # Save cache to file
             self.cache_manager.save()
             
-            # Check cache file content - should have timestamp
-            with open(self.cache_file, 'r') as f:
-                cache_content = json.load(f)
-                assert 'cached_items' in cache_content
-                assert 'timestamp' in cache_content['cached_items']
-                assert 'data' in cache_content['cached_items']
+            # Load cache via CacheManager to verify (handles decryption)
+            cache2 = CacheManager(self.cache_file, enabled=True)
+            cache2.load()
+            
+            # Should have the cached items with timestamp
+            assert 'cached_items' in cache2.cache
+            assert 'timestamp' in cache2.cache['cached_items']
+            assert 'data' in cache2.cache['cached_items']
 
 if __name__ == '__main__':
     unittest.main()

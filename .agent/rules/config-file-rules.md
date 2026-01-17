@@ -89,7 +89,7 @@ config:
     style-placeholder-color: # Placeholder color, Default "gray"
     style-placeholder-text: # Placeholder to be display when empty, default "(tab for menu)"
     history-size: # history cache size limit, default 20
-    verbose: # Enable verbose output, default false
+    verbosity: # Set verbosity level, with possible values of silent, default, verbose and trace, default "default"
     shell: # Enable shell mode to execute direct commands without definition, default false
 
 --- # New config block

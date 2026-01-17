@@ -102,26 +102,6 @@ command: psql -h $${databases.host} -U $${databases.user}
 Access OS environment:
 ```yaml
 command: echo $${env.HOME}
-```
-
-## Priority System
-
-Dynamic dicts can reference each other. Lower priority executes first:
-
-```yaml
----
-type: dynamic_dict
-name: regions
-priority: 1
-command: aws ec2 describe-regions --query 'Regions[].RegionName'
-
----
-type: dynamic_dict
-name: instances
-priority: 2  # Executes after 'regions'
-command: aws ec2 describe-instances --region $${regions.current}
-```
-
 ---
 
 | ← Previous | Next → |

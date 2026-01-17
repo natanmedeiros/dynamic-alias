@@ -24,6 +24,8 @@ class ConfigBlockParser(BlockParser):
     """Factory for parsing config blocks."""
     
     def parse(self, doc: Dict[str, Any], loader: 'ConfigLoader') -> None:
+        from .constants import VERBOSITY_LEVELS, VERBOSITY_VERBOSE, VERBOSITY_DEFAULT
+        
         cfg = doc.get('config', {})
         if not isinstance(cfg, dict):
             return
@@ -50,9 +52,18 @@ class ConfigBlockParser(BlockParser):
             # Rule 1.2.19: Max 1000
             val = int(cfg['history-size'])
             loader.global_config.history_size = min(val, 1000)
-            
-        if 'verbose' in cfg:
-            loader.global_config.verbose = bool(cfg['verbose'])
+        
+        # Handle verbosity (with backward compatibility for verbose: true/false)
+        if 'verbosity' in cfg:
+            val = str(cfg['verbosity']).lower()
+            if val in VERBOSITY_LEVELS:
+                loader.global_config.verbosity = val
+            else:
+                print(f"Warning: Invalid verbosity '{val}', using 'default'")
+                loader.global_config.verbosity = VERBOSITY_DEFAULT
+        elif 'verbose' in cfg:
+            # Backward compatibility: verbose: true -> verbosity: verbose
+            loader.global_config.verbosity = VERBOSITY_VERBOSE if bool(cfg['verbose']) else VERBOSITY_DEFAULT
         
         if 'shell' in cfg:
             loader.global_config.shell = bool(cfg['shell'])

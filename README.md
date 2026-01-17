@@ -75,8 +75,10 @@ Create a declarative, customizable CLI for your organization. Define your compan
 
 ## Roadmap
 
+### Recently Added
+- [x] **Cache Encryption** - Automatic encryption using machine identifier (Windows GUID, Linux/macOS machine-id)
+
 ### Upcoming
-- [ ] **Cache Encryption** - Secure cache file with user-defined encryption key or PEM file
 - [ ] **OS Package Publishing** - Debian (.deb), RPM, Windows installer
 - [ ] **Homebrew Publication** - macOS/Linux via Homebrew
 

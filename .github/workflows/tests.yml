@@ -86,12 +86,13 @@ jobs:
       run: pytest -vv
 
   # Backwards compatibility tests with various pip versions (Ubuntu)
+  # Note: cryptography>=44 requires pip>=22 for pyproject.toml parsing
   test-pip-compat:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        pip-version: ['19.3.1', '20.3.4', '21.3.1', '22.3.1', '23.3.2', '24.0']
+        pip-version: ['22.3.1', '23.3.2', '24.0']
     
     steps:
     - uses: actions/checkout@v4
@@ -118,12 +119,13 @@ jobs:
         pytest -vv
 
   # Backwards compatibility tests with various pip versions (Windows)
+  # Note: cryptography>=44 requires pip>=22 for pyproject.toml parsing
   test-pip-compat-windows:
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
-        pip-version: ['19.3.1', '20.3.4', '21.3.1', '22.3.1', '23.3.2', '24.0']
+        pip-version: ['22.3.1', '23.3.2', '24.0']
     
     steps:
     - uses: actions/checkout@v4
