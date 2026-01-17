@@ -58,6 +58,12 @@ class TestMachineId(unittest.TestCase):
     @unittest.skipUnless(platform.system() == "Linux", "Linux only")
     def test_linux_machine_id_format(self):
         """Linux machine-id should be a hex string."""
+        import os
+        # Skip if machine-id files don't exist (e.g., in containers)
+        paths = ["/etc/machine-id", "/var/lib/dbus/machine-id"]
+        if not any(os.path.exists(p) for p in paths):
+            self.skipTest("No machine-id files available (container environment)")
+        
         machine_id = _get_linux_machine_id()
         # machine-id is typically 32 hex characters
         self.assertTrue(len(machine_id) >= 32)
