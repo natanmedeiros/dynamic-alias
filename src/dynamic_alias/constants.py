@@ -78,7 +78,7 @@ CONFIG_KEYS = [
     'style-completion', 'style-completion-current', 
     'style-scrollbar-background', 'style-scrollbar-button',
     'style-placeholder-color', 'style-placeholder-text',
-    'history-size', 'verbose', 'shell'
+    'history-size', 'verbosity', 'shell'
 ]
 
 # Cache Key Constants (DRY: single source of truth for cache keys)
@@ -87,3 +87,10 @@ CACHE_KEY_LOCALS = '_locals'
 CACHE_KEY_TIMESTAMP = 'timestamp'
 CACHE_KEY_DATA = 'data'
 CACHE_KEY_CRYPT = '_crypt'  # Rule 1.2.28: Encrypted cache data key
+
+# Verbosity Levels
+VERBOSITY_SILENT = "silent"
+VERBOSITY_DEFAULT = "default"
+VERBOSITY_VERBOSE = "verbose"
+VERBOSITY_TRACE = "trace"
+VERBOSITY_LEVELS = [VERBOSITY_SILENT, VERBOSITY_DEFAULT, VERBOSITY_VERBOSE, VERBOSITY_TRACE]

@@ -322,6 +322,93 @@ To transfer cache data to another machine:
 
 4. **Run any command** — the application will automatically detect the plain JSON and re-encrypt it with the new machine's key on first save.
 
+## Verbosity Levels
+
+Control the amount of output with the `verbosity` configuration option.
+
+### Configuration
+
+```yaml
+config:
+  verbosity: verbose  # silent | default | verbose | trace
+```
+
+### Available Levels
+
+| Level | Description |
+|-------|-------------|
+| `silent` | No "Running:" hint, no dividers — minimal output |
+| `default` | Standard output with "Running:" and dividers |
+| `verbose` | All default + variable resolution logs, cache modifications |
+| `trace` | All verbose + method timing with input/output |
+
+### Examples
+
+**Silent Mode** — Ideal for scripting:
+```yaml
+config:
+  verbosity: silent
+```
+```bash
+dya simple
+# Output: simple (no "Running: echo simple" prefix)
+```
+
+**Verbose Mode** — Shows what's happening:
+```yaml
+config:
+  verbosity: verbose
+```
+```
+[VERBOSE] Loaded configuration from: ~/.dya/dya.yaml
+[VERBOSE] Loaded cache from: ~/.dya/dya.json
+[VERBOSE] Resolved $${servers.host} = '192.168.1.1' (from context)
+Running: ping 192.168.1.1
+------------------------------
+```
+
+**Trace Mode** — Full debugging with method timing:
+```yaml
+config:
+  verbosity: trace
+```
+
+**Startup traces:**
+```
+[TRACE] ConfigLoader.load (0.0123s)
+  Input: {"path": "./tests/dya.yaml"}
+  Output: "15 commands, 3 dicts, 2 dynamic_dicts"
+[TRACE] ConfigValidator.validate (0.0045s)
+  Input: {"path": "./tests/dya.yaml"}
+  Output: "passed"
+[TRACE] CacheManager.load (0.0089s)
+  Input: {"path": "~/.dya/dya.json", "existed": true}
+  Output: "5 history entries"
+```
+
+**Execution traces:**
+```
+[TRACE] DataResolver._execute_dynamic_source (0.4023s)
+  Input: {"name": "dynamic_nodes", "command": "powershell -NoProfile -Comma..."}
+  Output: "2 items"
+[TRACE] VariableResolver.resolve_app_vars (0.5512s)
+  Input: {"template": "echo $${dynamic_nodes.ip}", "variables": {...}}
+  Output: "echo 10.0.0.1"
+```
+
+> **Note**: In interactive mode, trace logs are buffered and printed after command execution to avoid breaking the prompt.
+
+### Migration from `verbose`
+
+The old `verbose: true/false` is deprecated. Use `verbosity` instead:
+
+| Old | New |
+|-----|-----|
+| `verbose: true` | `verbosity: verbose` |
+| `verbose: false` | `verbosity: default` |
+
+> The validator will warn if you're using the deprecated `verbose` key.
+
 ## BOM Handling
 
 Config files with UTF-8 BOM (Byte Order Mark) are automatically handled. This ensures compatibility with files created by Windows editors.

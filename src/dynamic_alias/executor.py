@@ -167,9 +167,15 @@ class CommandExecutor:
         return current_chain, variables, False, remaining_args
 
     def execute(self, command_chain: List[Union[CommandConfig, SubCommand, ArgConfig]], variables: Dict[str, Any], remaining_args: List[str] = None):
+        import time
+        execute_start = time.time()
         
         if remaining_args is None:
             remaining_args = []
+
+        # Get output strategy for verbosity level
+        from .output import get_output_strategy
+        output = get_output_strategy(self.resolver.config.global_config.verbosity)
 
         # Strict mode check
         root_cmd = command_chain[0]
@@ -196,9 +202,10 @@ class CommandExecutor:
         # Refactored to use VariableResolver (DRY)
         
         # Determine verbose log callback
-        verbose_log = None
-        if self.resolver.config.global_config.verbose:
-            verbose_log = self.resolver.add_verbose_log
+        verbose_log = output.verbose_log if output.is_verbose else None
+        
+        # Trace: log resolve_app_vars
+        resolve_start = time.time()
         
         # 1. App Vars ($${source.key})
         cmd_resolved = VariableResolver.resolve_app_vars(
@@ -208,6 +215,11 @@ class CommandExecutor:
             use_local_cache=lambda k: self.resolver.cache.get_local(k),
             verbose_log=verbose_log
         )
+        
+        resolve_elapsed = time.time() - resolve_start
+        self.resolver.add_trace_log("VariableResolver", "resolve_app_vars", resolve_elapsed,
+                                   inputs={"template": full_template[:100], "variables": variables},
+                                   output_val=cmd_resolved[:100] if cmd_resolved else None)
         
         # 2. User Vars (${var})
         cmd_resolved = VariableResolver.resolve_user_vars(cmd_resolved, variables)
@@ -221,8 +233,9 @@ class CommandExecutor:
         # Flush verbose logs AFTER variable resolution (so chained resolution logs show with current command)
         self.resolver.flush_verbose_logs()
         
-        print_formatted_text(HTML(f"<b><green>Running:</green></b> {cmd_resolved}"))
-        print("-" * 30)
+        # Use output strategy for Running hint and divider
+        output.print_running(cmd_resolved)
+        output.print_divider()
         
         # Save terminal state before subprocess execution
         # This prevents terminal corruption if subprocess is interrupted
@@ -263,8 +276,7 @@ class CommandExecutor:
                     # Store in locals with verbose logging
                     for key, value in output_data.items():
                         self.resolver.cache.set_local(str(key), str(value))
-                        if self.resolver.config.global_config.verbose:
-                            print(f"[VERBOSE] Set local: {key} = '{value}'")
+                        output.verbose_log(f"[VERBOSE] Set local: {key} = '{value}'")
                     
                     print(json.dumps(output_data, indent=2))
                     

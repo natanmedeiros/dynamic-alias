@@ -9,7 +9,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2026-01-17
 
+### ⚠️ Breaking Changes
+
+#### Default File Paths Changed
+Config and cache files now use a directory structure:
+
+**Config path:**
+- **Old**: `~/.dya.yaml`
+- **New**: `~/.dya/dya.yaml`
+
+**Cache path:**
+- **Old**: `~/.dya.json`
+- **New**: `~/.dya/dya.json`
+
+> If you have existing files, move them manually to the new directory or they will be recreated.
+
+#### Verbosity Configuration Changed
+The `verbose` boolean config has been replaced with `verbosity` string:
+- **Old**: `verbose: true` or `verbose: false`
+- **New**: `verbosity: silent|default|verbose|trace`
+
+```yaml
+# Before
+config:
+  verbose: true
+
+# After
+config:
+  verbosity: verbose
+```
+
+> Backward compatibility: `verbose: true` → `verbosity: verbose`, but the validator will warn about deprecation.
+
 ### ✨ New Features
+
+#### Cache Encryption
+Cache files are now encrypted using AES-256-GCM with a machine-specific key:
+- Data is tied to the machine where cache was created
+- Automatic migration: plain JSON is encrypted on first save
+- Export with `--dya-dump` for backup or migration
+
+#### Verbosity Levels
+Four verbosity levels for different use cases:
+
+| Level | Description |
+|-------|-------------|
+| `silent` | No "Running:" hint, no dividers — minimal output |
+| `default` | Standard output with "Running:" and dividers |
+| `verbose` | All default + variable resolution logs, cache modifications |
+| `trace` | All verbose + method timing with input/output (buffered in interactive mode) |
+
+**Trace Mode** logs method timing and input/output for:
+- **Startup**: `ConfigLoader.load`, `ConfigValidator.validate`, `CacheManager.load`
+- **Execution**: `DataResolver.resolve_one`, `DataResolver._execute_dynamic_source`, `VariableResolver.resolve_app_vars`
+
+```yaml
+config:
+  verbosity: trace  # For debugging
+```
+
+#### Interactive Mode Cache Management
+Management flags now work in interactive mode:
+```bash
+dya> --dya-clear-cache
+dya> --dya-set-locals key value
+dya> --dya-dump
+```
+
+> Note: `--dya-config` and `--dya-cache` are NOT supported in interactive mode.
 
 #### Indexed Access for Dicts and Dynamic Dicts
 Direct position selection in data sources using bracket syntax:
@@ -49,6 +116,7 @@ Both `-o` and `--output` trigger the same argument. Displayed as `-o, --output $
 ### 🔧 Improvements
 
 #### Enhanced Validator
+- **Deprecated Config Detection**: Warns about old `verbose: true/false` usage
 - **Variable Reference Validation**: Checks all dict/dynamic_dict variables are defined
 - **Position Validation**: Validates indexed access syntax `$${source[N].key}`
 - **Key Validation**: Ensures referenced keys exist in data sources
@@ -57,6 +125,7 @@ Both `-o` and `--output` trigger the same argument. Displayed as `-o, --output $
 ### 📚 Documentation
 - New dedicated [Helper System documentation](docs/helper.md)
 - Updated [Commands documentation](docs/commands.md) with array aliases
+- Updated [Features documentation](docs/features.md) with verbosity levels
 - Added Helper System to README documentation index
 
 ---

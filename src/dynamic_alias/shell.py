@@ -73,12 +73,15 @@ class InteractiveShell:
             return True
         
         return False
+    def _get_output(self):
+        """Get the output strategy for current verbosity level."""
+        from .output import get_output_strategy
+        return get_output_strategy(self.resolver.config.global_config.verbosity)
     
     def _cmd_clear_cache(self, args: list):
         """Clear dynamic dict cache (keeps history)."""
         count = self.resolver.cache.clear_cache()
-        if self.resolver.config.global_config.verbose:
-            print(f"[VERBOSE] Cache modified: cleared {count} dynamic dict entries")
+        self._get_output().verbose_log(f"[VERBOSE] Cache modified: cleared {count} dynamic dict entries")
         print(f"Cleared {count} cache entries (history preserved)")
     
     def _cmd_clear_history(self, args: list):
@@ -91,8 +94,7 @@ class InteractiveShell:
     def _cmd_clear_all(self, args: list):
         """Delete entire cache file."""
         if self.resolver.cache.delete_all():
-            if self.resolver.config.global_config.verbose:
-                print(f"[VERBOSE] Cache file deleted: {self.resolver.cache.cache_file}")
+            self._get_output().verbose_log(f"[VERBOSE] Cache file deleted: {self.resolver.cache.cache_file}")
             print(f"Cache file deleted: {self.resolver.cache.cache_file}")
         else:
             print(f"Cache file not found: {self.resolver.cache.cache_file}")
@@ -100,8 +102,7 @@ class InteractiveShell:
     def _cmd_clear_locals(self, args: list):
         """Clear all local variables."""
         if self.resolver.cache.clear_locals():
-            if self.resolver.config.global_config.verbose:
-                print("[VERBOSE] Cache modified: cleared all _locals")
+            self._get_output().verbose_log("[VERBOSE] Cache modified: cleared all _locals")
             print("Local variables cleared")
         else:
             print("No local variables to clear")
@@ -113,8 +114,7 @@ class InteractiveShell:
             return
         key, value = args[0], args[1]
         self.resolver.cache.set_local(key, value)
-        if self.resolver.config.global_config.verbose:
-            print(f"[VERBOSE] Cache modified: set _locals.{key} = '{value}'")
+        self._get_output().verbose_log(f"[VERBOSE] Cache modified: set _locals.{key} = '{value}'")
         print(f"Local variable set: {key}={value}")
     
     def _cmd_dump(self, args: list):

@@ -380,6 +380,15 @@ class ConfigValidator:
         
         # Validate config block (special case, not a typed block)
         if self.global_config is not None:
+            # Check for deprecated 'verbose' key
+            if 'verbose' in self.global_config:
+                self.report.add(ValidationResult(
+                    passed=False,
+                    message="Config uses deprecated 'verbose' key",
+                    hint="Replace 'verbose: true/false' with 'verbosity: silent|default|verbose|trace'",
+                    location="config block"
+                ))
+            
             invalid_keys = [k for k in self.global_config.keys() 
                           if k not in CONFIG_KEYS]
             if invalid_keys:

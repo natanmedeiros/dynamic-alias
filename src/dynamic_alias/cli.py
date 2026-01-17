@@ -63,6 +63,10 @@ class DynamicAliasCLI:
         self._execute_app(parsed.filtered_args, final_config_path, final_cache_path)
 
     def _execute_app(self, filtered_args: List[str], config_path: str, cache_path: str):
+        import time
+        
+        # Load config with timing
+        config_start = time.time()
         loader = ConfigLoader(config_path)
         try:
             loader.load()
@@ -77,28 +81,44 @@ class DynamicAliasCLI:
             else:
                 print(f"Error: {e}")
                 sys.exit(1)
+        config_elapsed = time.time() - config_start
         
-        verbose = loader.global_config.verbose
-        if verbose:
-            print(f"[VERBOSE] Loaded configuration from: {config_path}")
+        # Get output strategy for verbosity level
+        from .output import get_output_strategy
+        output = get_output_strategy(loader.global_config.verbosity)
+        output.verbose_log(f"[VERBOSE] Loaded configuration from: {config_path}")
+        output.trace_log("ConfigLoader", "load", config_elapsed,
+                        inputs={"path": config_path},
+                        output=f"{len(loader.commands)} commands, {len(loader.dicts)} dicts, {len(loader.dynamic_dicts)} dynamic_dicts")
         
-        # Silent validation at startup
+        # Silent validation at startup with timing
+        validation_start = time.time()
         if not validate_config_silent(config_path, CUSTOM_SHORTCUT):
             sys.exit(1)
+        validation_elapsed = time.time() - validation_start
+        output.trace_log("ConfigValidator", "validate", validation_elapsed,
+                        inputs={"path": config_path},
+                        output="passed")
         
+        # Load cache with timing
+        cache_start = time.time()
         cache = CacheManager(cache_path, True) # CACHE_ENABLED is typically True
         cache_existed = os.path.exists(cache_path)
         cache.load()
+        cache_elapsed = time.time() - cache_start
         
-        if verbose:
-            if cache_existed:
-                print(f"[VERBOSE] Loaded cache from: {cache_path}")
-            else:
-                print(f"[VERBOSE] Created new cache file: {cache_path}")
-            
-            history = cache.get_history()
-            if history:
-                print(f"[VERBOSE] Loaded {len(history)} history entries")
+        if cache_existed:
+            output.verbose_log(f"[VERBOSE] Loaded cache from: {cache_path}")
+        else:
+            output.verbose_log(f"[VERBOSE] Created new cache file: {cache_path}")
+        
+        history = cache.get_history()
+        if history:
+            output.verbose_log(f"[VERBOSE] Loaded {len(history)} history entries")
+        
+        output.trace_log("CacheManager", "load", cache_elapsed,
+                        inputs={"path": cache_path, "existed": cache_existed},
+                        output=f"{len(history) if history else 0} history entries")
         
         resolver = DataResolver(loader, cache)
         executor = CommandExecutor(resolver)
@@ -214,17 +234,21 @@ class DynamicAliasCLI:
         """Returns True if execution should stop (action performed)."""
         if parsed.clear_cache or parsed.clear_history or parsed.clear_all or parsed.set_locals_key or parsed.clear_locals or parsed.dump_cache:
             import json
+            from .output import get_output_strategy
+            from .constants import VERBOSITY_DEFAULT
             
-            # Try to load config to check verbose setting
-            verbose = False
+            # Try to load config to get verbosity setting
+            verbosity = VERBOSITY_DEFAULT
             if config_path:
                 try:
                     from .config import ConfigLoader
                     loader = ConfigLoader(config_path)
                     loader.load()
-                    verbose = loader.global_config.verbose
+                    verbosity = loader.global_config.verbosity
                 except Exception:
-                    pass  # Config load failed - skip verbose
+                    pass  # Config load failed - use default
+            
+            output = get_output_strategy(verbosity)
             
             cache = CacheManager(cache_path, True)
             try:
@@ -242,8 +266,7 @@ class DynamicAliasCLI:
             
             if parsed.clear_all:
                 if cache.delete_all():
-                    if verbose:
-                        print(f"[VERBOSE] Cache file deleted: {cache_path}")
+                    output.verbose_log(f"[VERBOSE] Cache file deleted: {cache_path}")
                     print(f"Cache file deleted: {cache_path}")
                 else:
                     print(f"Cache file not found: {cache_path}")
@@ -251,8 +274,7 @@ class DynamicAliasCLI:
             
             if parsed.clear_cache:
                 count = cache.clear_cache()
-                if verbose:
-                    print(f"[VERBOSE] Cache modified: cleared {count} dynamic dict entries")
+                output.verbose_log(f"[VERBOSE] Cache modified: cleared {count} dynamic dict entries")
                 print(f"Cleared {count} cache entries (history preserved)")
             
             if parsed.clear_history:
@@ -263,14 +285,12 @@ class DynamicAliasCLI:
             
             if parsed.set_locals_key:
                 cache.set_local(parsed.set_locals_key, parsed.set_locals_value)
-                if verbose:
-                    print(f"[VERBOSE] Cache modified: set _locals.{parsed.set_locals_key} = '{parsed.set_locals_value}'")
+                output.verbose_log(f"[VERBOSE] Cache modified: set _locals.{parsed.set_locals_key} = '{parsed.set_locals_value}'")
                 print(f"Local variable set: {parsed.set_locals_key}={parsed.set_locals_value}")
             
             if parsed.clear_locals:
                 if cache.clear_locals():
-                    if verbose:
-                        print("[VERBOSE] Cache modified: cleared all _locals")
+                    output.verbose_log("[VERBOSE] Cache modified: cleared all _locals")
                     print("Local variables cleared")
                 else:
                     print("No local variables to clear")
