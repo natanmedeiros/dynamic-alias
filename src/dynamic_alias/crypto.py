@@ -34,20 +34,49 @@ def get_machine_id() -> str:
     
     Returns:
         Machine-specific unique identifier string.
-        
-    Raises:
-        RuntimeError: If unable to retrieve machine ID on current platform.
+        Falls back to hostname + username if platform-specific ID unavailable.
     """
     system = platform.system()
     
-    if system == "Windows":
-        return _get_windows_machine_guid()
-    elif system == "Linux":
-        return _get_linux_machine_id()
-    elif system == "Darwin":
-        return _get_macos_machine_id()
-    else:
-        raise RuntimeError(f"Unsupported platform for machine ID: {system}")
+    try:
+        if system == "Windows":
+            return _get_windows_machine_guid()
+        elif system == "Linux":
+            return _get_linux_machine_id()
+        elif system == "Darwin":
+            return _get_macos_machine_id()
+        else:
+            # Unknown platform, use fallback
+            return _get_fallback_machine_id()
+    except RuntimeError:
+        # Platform-specific method failed, use fallback
+        return _get_fallback_machine_id()
+
+
+def _get_fallback_machine_id() -> str:
+    """
+    Fallback machine ID using hostname and username.
+    Used in CI/container environments where platform-specific IDs aren't available.
+    
+    NOTE: This is less secure than platform-specific IDs but allows the 
+    application to work in CI environments.
+    """
+    import socket
+    import getpass
+    
+    try:
+        hostname = socket.gethostname()
+    except Exception:
+        hostname = "unknown-host"
+    
+    try:
+        username = getpass.getuser()
+    except Exception:
+        username = "unknown-user"
+    
+    # Combine hostname + username as a pseudo-unique identifier
+    fallback_id = f"fallback:{hostname}:{username}"
+    return fallback_id
 
 
 def _get_windows_machine_guid() -> str:

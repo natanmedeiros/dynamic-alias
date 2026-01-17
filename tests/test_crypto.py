@@ -27,7 +27,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 's
 
 from dynamic_alias.crypto import (
     get_machine_id, derive_key, encrypt_data, decrypt_data,
-    _get_windows_machine_guid, _get_linux_machine_id, _get_macos_machine_id
+    _get_windows_machine_guid, _get_linux_machine_id, _get_macos_machine_id,
+    _get_fallback_machine_id
 )
 
 
@@ -196,11 +197,21 @@ class TestMachineIdMocking(unittest.TestCase):
         self.assertEqual(result, 'test-macos-uuid')
     
     @patch('dynamic_alias.crypto.platform.system', return_value='FreeBSD')
-    def test_unsupported_platform_raises(self, mock_system):
-        """Should raise RuntimeError on unsupported platform."""
-        with self.assertRaises(RuntimeError) as ctx:
-            get_machine_id()
-        self.assertIn('Unsupported platform', str(ctx.exception))
+    @patch('dynamic_alias.crypto._get_fallback_machine_id', return_value='fallback:test-host:test-user')
+    def test_unsupported_platform_uses_fallback(self, mock_fallback, mock_system):
+        """Should use fallback on unsupported platform."""
+        result = get_machine_id()
+        self.assertEqual(result, 'fallback:test-host:test-user')
+        mock_fallback.assert_called_once()
+    
+    @patch('dynamic_alias.crypto.platform.system', return_value='Linux')
+    @patch('dynamic_alias.crypto._get_linux_machine_id', side_effect=RuntimeError("No machine-id"))
+    @patch('dynamic_alias.crypto._get_fallback_machine_id', return_value='fallback:ci-host:runner')
+    def test_platform_failure_uses_fallback(self, mock_fallback, mock_linux, mock_system):
+        """Should use fallback when platform-specific method fails."""
+        result = get_machine_id()
+        self.assertEqual(result, 'fallback:ci-host:runner')
+        mock_fallback.assert_called_once()
 
 
 if __name__ == '__main__':
