@@ -32,9 +32,11 @@ jobs:
 
   # Build and publish to PyPI
   publish:
-    needs: test  # Only run after tests pass
+    needs: test
     runs-on: ubuntu-latest
-    # Note: PYPI_TOKEN must be configured as a repository secret
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - uses: actions/checkout@v4
@@ -75,7 +77,4 @@ jobs:
       run: twine check dist/*
     
     - name: Publish to PyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-      run: twine upload dist/*
+      uses: pypa/gh-action-pypi-publish@release/v1

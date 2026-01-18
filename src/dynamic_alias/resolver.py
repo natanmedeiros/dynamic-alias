@@ -40,14 +40,21 @@ class DataResolver:
                     parts.append(f"  Input: <unable to serialize>")
             if output_val is not None:
                 try:
-                    output_str = str(output_val)
-                    if len(output_str) > 200:
-                        output_str = output_str[:200] + "..."
+                    import json
+                    output_str = json.dumps(output_val, ensure_ascii=False, default=str)
+                    if len(output_str) > 500:
+                        output_str = output_str[:500] + "..."
                     parts.append(f"  Output: {output_str}")
                 except Exception:
-                    parts.append(f"  Output: <unable to serialize>")
+                    try:
+                        output_str = str(output_val)
+                        if len(output_str) > 500:
+                            output_str = output_str[:500] + "..."
+                        parts.append(f"  Output: {output_str}")
+                    except Exception:
+                        parts.append(f"  Output: <unable to serialize>")
             self.verbose_log_buffer.append("\n".join(parts))
-    
+
     def flush_verbose_logs(self):
         """Print and clear all buffered verbose/trace logs."""
         for msg in self.verbose_log_buffer:
@@ -84,7 +91,7 @@ class DataResolver:
             elapsed = time.time() - resolve_start
             self.add_trace_log("DataResolver", "resolve_one", elapsed,
                              inputs={"name": name, "type": "dict"},
-                             output_val=f"{len(self.resolved_data[name])} items")
+                             output_val=self.resolved_data[name])
             return self.resolved_data[name]
         
         # Check dynamic dicts
@@ -108,7 +115,7 @@ class DataResolver:
                     self.add_verbose_log(f"[VERBOSE] Executed dynamic_dict '{name}' in {exec_elapsed:.2f}s")
                     self.add_trace_log("DataResolver", "_execute_dynamic_source", exec_elapsed,
                                      inputs={"name": name, "command": dd.command[:50] + "..."},
-                                     output_val=f"{len(data) if data else 0} items")
+                                     output_val=data)
                     
                     # Warning log for null/empty results
                     if data is None:
@@ -132,7 +139,7 @@ class DataResolver:
                     elapsed = time.time() - resolve_start
                     self.add_trace_log("DataResolver", "resolve_one", elapsed,
                                      inputs={"name": name, "type": "dynamic_dict", "source": "cache"},
-                                     output_val=f"{len(data)} items")
+                                     output_val=data)
                 
                 self.resolved_data[name] = data
                 return self.resolved_data[name]
@@ -154,7 +161,8 @@ class DataResolver:
             # Behavior preserved: resolver.py only supports "Direct Mode" (lazy resolution)
             cmd = VariableResolver.resolve_app_vars(
                 dd.command, 
-                resolver_func=self.resolve_one
+                resolver_func=self.resolve_one,
+                use_local_cache=self.cache.get_local
             )
             
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=dd.timeout)

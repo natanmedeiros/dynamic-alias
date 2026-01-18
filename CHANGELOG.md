@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] - 2026-01-17
+
+### Added
+- Fix: Support for local variables (`$${locals.key}`) in `dynamic_dict` commands.
+- Documentation: Added warnings about using colons (`:`) in YAML commands and recommended multi-line syntax.
+- Logging: Enhanced trace logs to show full JSON content of inputs and outputs for easier debugging.
+- Error Handling: Added explicit error messages when variable resolution fails (e.g. missing locals or dictionary keys).
+
+### Security
+- Workflow: Updated GitHub Actions to use Trusted Publishing (OIDC) for PyPI releases.
+
 ## [1.1.1] - 2026-01-17
 
 ### Added

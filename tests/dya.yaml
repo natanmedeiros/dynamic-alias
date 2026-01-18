@@ -462,3 +462,18 @@ sub:
         args:
           - alias: --dry-run
             command: echo --dry-run
+
+---
+type: dynamic_dict
+name: test_locals_dd
+command: |
+  python -c "import json; print(json.dumps([{'value': '$${locals.test_local_var}'}]))"
+mapping:
+  result: value
+
+---
+type: command
+name: Test Locals
+alias: test-locals
+command: |
+  echo "Result: $${test_locals_dd.result}"
