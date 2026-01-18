@@ -1,9 +1,55 @@
 import re
+import os
 import shlex
 from prompt_toolkit.completion import Completer, Completion
 from .resolver import DataResolver
 from .executor import CommandExecutor
-from .constants import REGEX_APP_VAR
+from .constants import REGEX_APP_VAR, WINDOWS_BUILTINS, UNIX_BUILTINS
+
+# Cache for system commands (populated lazily)
+_system_commands_cache = None
+
+def get_system_commands():
+    """Get list of executable commands from PATH (cached)."""
+    global _system_commands_cache
+    if _system_commands_cache is not None:
+        return _system_commands_cache
+    
+    commands = set()
+    
+    # Add common shell built-ins
+    if os.name == 'nt':
+        # Common Windows built-ins
+        commands.update(WINDOWS_BUILTINS)
+    else:
+        # Common Unix built-ins
+        commands.update(UNIX_BUILTINS)
+
+
+    path_dirs = os.environ.get('PATH', '').split(os.pathsep)
+    
+    for path_dir in path_dirs:
+        if not os.path.isdir(path_dir):
+            continue
+        try:
+            for item in os.listdir(path_dir):
+                full_path = os.path.join(path_dir, item)
+                # On Windows, check for .exe, .cmd, .bat, etc.
+                if os.name == 'nt':
+                    name_lower = item.lower()
+                    if any(name_lower.endswith(ext) for ext in ('.exe', '.cmd', '.bat', '.ps1', '.com')):
+                        # Add without extension for cleaner completion
+                        base_name = os.path.splitext(item)[0]
+                        commands.add(base_name.lower())
+                else:
+                    # On Unix, check if executable
+                    if os.access(full_path, os.X_OK) and os.path.isfile(full_path):
+                        commands.add(item)
+        except (PermissionError, OSError):
+            continue
+    
+    _system_commands_cache = sorted(commands)
+    return _system_commands_cache
 
 class DynamicAliasCompleter(Completer):
     def __init__(self, resolver: DataResolver, executor: CommandExecutor):
@@ -254,3 +300,21 @@ class DynamicAliasCompleter(Completer):
                 else:
                     if head.startswith(prefix):
                         yield Completion(head + ' ', start_position=-len(prefix))
+            
+            # Path completion: complete system commands from PATH
+            # Only when: shell: true AND path_completion: true AND no command matched AND at first token
+            global_config = self.resolver.config.global_config
+            if (global_config.shell and 
+                global_config.path_completion and 
+                matched_cmd_node is None and 
+                len(parts) == 1 and 
+                prefix):
+                
+                # Get matching system commands (inline completion, not dropdown)
+                system_cmds = get_system_commands()
+                for cmd in system_cmds:
+                    if cmd.startswith(prefix.lower()) and cmd != prefix.lower():
+                        # Yield only the best match (first alphabetically)
+                        yield Completion(cmd + ' ', start_position=-len(prefix), display=cmd)
+                        break  # Only complete to first match (inline, not list)
+

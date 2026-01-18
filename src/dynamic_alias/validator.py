@@ -389,6 +389,15 @@ class ConfigValidator:
                     location="config block"
                 ))
             
+            # Check path-completion requires shell mode
+            if self.global_config.get('path-completion') and not self.global_config.get('shell'):
+                self.report.add(ValidationResult(
+                    passed=False,
+                    message="'path-completion' requires 'shell: true'",
+                    hint="Enable shell mode with 'shell: true' or disable path-completion",
+                    location="config block"
+                ))
+            
             invalid_keys = [k for k in self.global_config.keys() 
                           if k not in CONFIG_KEYS]
             if invalid_keys:

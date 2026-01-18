@@ -91,6 +91,7 @@ config:
     history-size: # history cache size limit, default 20
     verbosity: # Set verbosity level, with possible values of silent, default, verbose and trace, default "default"
     shell: # Enable shell mode to execute direct commands without definition, default false
+    path-completion: # Enable system command completion from PATH (requires shell: true), default false
 
 --- # New config block
 type: dict

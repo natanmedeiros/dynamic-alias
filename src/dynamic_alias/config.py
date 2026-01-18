@@ -67,6 +67,9 @@ class ConfigBlockParser(BlockParser):
         
         if 'shell' in cfg:
             loader.global_config.shell = bool(cfg['shell'])
+        
+        if 'path-completion' in cfg:
+            loader.global_config.path_completion = bool(cfg['path-completion'])
 
 
 class DictBlockParser(BlockParser):

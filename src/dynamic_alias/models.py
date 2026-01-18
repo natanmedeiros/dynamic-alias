@@ -46,6 +46,7 @@ class GlobalConfig:
     history_size: int = 20  # Rule 1.2.19: Default 20
     verbosity: str = "default"  # silent, default, verbose, trace
     shell: bool = False     # Rule: Shell mode - execute unrecognized commands directly
+    path_completion: bool = False  # Complete system commands from PATH (only with shell: true)
 
 @dataclass
 class CommandConfig:

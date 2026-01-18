@@ -2,6 +2,8 @@ config:
   style-completion: "bg:#002222 #ffffff"
   history-size: 5
   verbosity: trace
+  shell: true
+  path-completion: true
 
 ---
 type: dict
@@ -445,3 +447,18 @@ sub:
         command: --json
         helper: Output in JSON format
 
+
+---
+type: command
+name: Nested Test Command
+alias: nested-test-cmd
+command: echo deep
+sub:
+  - alias: level1
+    command: echo level1
+    sub:
+      - alias: level2
+        command: echo level2
+        args:
+          - alias: --dry-run
+            command: echo --dry-run
