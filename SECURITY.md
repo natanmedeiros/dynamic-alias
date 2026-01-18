@@ -4,8 +4,23 @@
 
 | Version | Supported          | Notes |
 | ------- | ------------------ | ----- |
-| 0.1.x   | :white_check_mark: | Current Beta release |
-| < 0.1.0 | :x:                | Deprecated / Development versions |
+| 1.1.x   | :white_check_mark: | Current stable release |
+| 1.0.x   | :white_check_mark: | Previous stable release |
+| < 1.0.0 | :x:                | Deprecated / Beta versions |
+
+## Dependencies
+
+We actively monitor and update dependencies for security vulnerabilities.
+
+| Dependency | Minimum Version | Reason |
+| ---------- | --------------- | ------ |
+| cryptography | >=46.0.0 | CVE-2024-12797, CVE-2025-9230 fixed in 44.0.1+ |
+| PyYAML | >=6.0.0 | No known CVEs |
+| prompt_toolkit | >=3.0.0 | No known CVEs |
+
+### pip Compatibility
+
+Due to security requirements for `cryptography>=46`, **pip 22.0+ is required** for installation. The `cryptography` package's `pyproject.toml` uses TOML syntax that older pip versions cannot parse.
 
 ## Reporting a Vulnerability
 
