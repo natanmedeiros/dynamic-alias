@@ -341,6 +341,18 @@ helper: |
 > [!TIP]
 > Use multiline `command` for complex shell scripts. Use multiline `helper` for detailed documentation with sections.
 
+> [!WARNING]
+> **Colon (`:`) in Commands**: If your command contains a colon followed by a space (`: `) (e.g., in JSON arguments or scripts), standard YAML parsers will misinterpret it as a key-value pair.
+>
+> **Solution**: Use **multi-line syntax (`|`)** for commands containing colons.
+>
+> **Incorrect:** `command: echo '{"k": "v"}'`
+> **Correct:**
+> ```yaml
+> command: |
+>   echo '{"k": "v"}'
+> ```
+
 ---
 
 | ← Previous | Next → |

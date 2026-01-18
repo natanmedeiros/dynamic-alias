@@ -52,6 +52,7 @@ class VariableResolver:
                     if verbose_log:
                         verbose_log(f"[VERBOSE] Resolved $${{locals.{key}}} = '{val}'")
                     return str(val)
+                print(f"Error: Local variable '{key}' not found")
                 return match.group(0)
 
             # 2. Handle context vars (priority 2) - List Mode
@@ -60,10 +61,13 @@ class VariableResolver:
             if source in context_vars and index_str is None:
                 item = context_vars[source]
                 if isinstance(item, dict):
-                    resolved_val = str(item.get(key, match.group(0)))
-                    if verbose_log:
-                        verbose_log(f"[VERBOSE] Resolved $${{{source}.{key}}} = '{resolved_val}' (from context)")
-                    return resolved_val
+                    if key in item:
+                        resolved_val = str(item[key])
+                        if verbose_log:
+                            verbose_log(f"[VERBOSE] Resolved $${{{source}.{key}}} = '{resolved_val}' (from context)")
+                        return resolved_val
+                    print(f"Error: Key '{key}' not found in context variable '{source}'")
+                    return match.group(0)
             
             # 3. Handle lazy resolution (priority 3) - Direct Mode
             # Resolve source on demand and use specified index (default 0)
@@ -71,15 +75,21 @@ class VariableResolver:
             if data_list:
                 # Validate index bounds
                 if index < len(data_list):
-                    resolved_val = str(data_list[index].get(key, match.group(0)))
-                    if verbose_log:
-                        index_display = f"[{index}]" if index_str else ""
-                        verbose_log(f"[VERBOSE] Resolved $${{{source}{index_display}.{key}}} = '{resolved_val}'")
-                    return resolved_val
+                    item = data_list[index]
+                    if key in item:
+                        resolved_val = str(item[key])
+                        if verbose_log:
+                            index_display = f"[{index}]" if index_str else ""
+                            verbose_log(f"[VERBOSE] Resolved $${{{source}{index_display}.{key}}} = '{resolved_val}'")
+                        return resolved_val
+                    print(f"Error: Key '{key}' not found in source '{source}' at index {index}")
+                    return match.group(0)
                 else:
                     # Index out of bounds - log warning and return original
-                    print(f"Warning: Index {index} out of bounds for '{source}' (size: {len(data_list)})")
+                    print(f"Error: Index {index} out of bounds for '{source}' (size: {len(data_list)})")
                     return match.group(0)
+            else:
+                print(f"Error: Source '{source}' returned no data or not found")
                 
             return match.group(0)
             

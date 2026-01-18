@@ -13,10 +13,7 @@ config:
 type: dict
 name: default_user
 data:
-  - name: postgres
-    user: postgres
-  - name: redis
-    user: default
+  - postgres: postgres
 
 # =============================================================================
 # DYNAMIC DICTS
@@ -44,6 +41,7 @@ timeout: 30
 cache-ttl: 300
 command: |
   aws ec2 describe-instances \
+    --profile $${locals.aws-profile} \
     --filters "Name=instance-state-name,Values=running" \
     --query 'Reservations[].Instances[].{id:InstanceId,name:Tags[?Key==`Name`].Value|[0]}' \
     --output json
@@ -59,6 +57,7 @@ timeout: 30
 cache-ttl: 300
 command: |
   aws rds describe-db-instances \
+    --profile $${locals.aws-profile} \
     --query 'DBInstances[?Engine==`postgres`].{name:DBInstanceIdentifier,host:Endpoint.Address,dbname:DBName}' \
     --output json
 mapping:
@@ -74,6 +73,7 @@ timeout: 30
 cache-ttl: 300
 command: |
   aws elasticache describe-cache-clusters \
+    --profile $${locals.aws-profile} \
     --show-cache-node-info \
     --query 'CacheClusters[?Engine==`redis`].{name:CacheClusterId,host:CacheNodes[0].Endpoint.Address}' \
     --output json
@@ -91,7 +91,8 @@ name: AWS SSO Login
 alias: sso $${accounts.name}
 command: |
   aws sso login --profile $${accounts.id} && 
-  echo "$${accounts.id}" > ~/.aws/last_profile
+  dya --set-locals aws-profile "$${accounts.id}" && 
+  dya --clear-cache 
 helper: |
   Description:
     Login to AWS SSO profile and save as last used profile
@@ -124,7 +125,7 @@ helper: |
 type: command
 name: PostgreSQL RDS
 alias: pg $${rds.name}
-command: psql -h $${rds.host} -U $${default_user.postgres.user} -d $${rds.dbname}
+command: psql -h $${rds.host} -U $${default_user.postgres} -d $${rds.dbname}
 timeout: 0
 helper: |
   Description:

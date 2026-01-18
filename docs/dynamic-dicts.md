@@ -41,6 +41,20 @@ mapping:
 > [!NOTE]
 > The command output is automatically validated. If the output is not valid JSON, an error is displayed with details including the parse error position and a preview of the output.
 
+> [!WARNING]
+> **Colon (`:`) in Commands**: If your command contains a colon followed by a space (`: `), standard YAML parsers will misinterpret it as a key-value pair. This often happens with JSON arguments or inline scripts.
+>
+> **Solution**: Always use the **multi-line syntax (`|`)** for commands containing colons.
+>
+> **Incorrect:**
+> `command: echo '{"key": "value"}'`
+>
+> **Correct:**
+> ```yaml
+> command: |
+>   echo '{"key": "value"}'
+> ```
+
 ## Optional Fields
 
 | Field | Default | Description |
