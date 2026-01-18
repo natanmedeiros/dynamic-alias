@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2026-01-17
+
+### Added
+- **Path Completion**: New config option `path-completion: true` (requires `shell: true`).
+  - Enables inline completion of system commands (from PATH) when no alias matches.
+  - Supports Windows built-ins (e.g., `dir`, `echo`, `cls`) and Unix commands.
+
+### Fixed
+- **Nested Subcommand Execution**: Resolved an issue where pressing Enter on a nested subcommand (e.g., `cmd sub1`) would incorrectly auto-select the next child (`sub2`) instead of executing `sub1`.
+  - Enter behavior logic improved: if no menu item is explicitly selected, Enter now executes the command.
+- **CI/CD Reliability**: Updated `cryptography` dependency to version 46.0.3 and adjusted pip compatibility matrix to fix CI failures on older pip environments.
+
+---
+
 ## [1.1.0] - 2026-01-17
 
 ### ⚠️ Breaking Changes

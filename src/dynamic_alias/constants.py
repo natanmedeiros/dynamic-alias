@@ -78,7 +78,7 @@ CONFIG_KEYS = [
     'style-completion', 'style-completion-current', 
     'style-scrollbar-background', 'style-scrollbar-button',
     'style-placeholder-color', 'style-placeholder-text',
-    'history-size', 'verbosity', 'shell'
+    'history-size', 'verbosity', 'shell', 'path-completion'
 ]
 
 # Cache Key Constants (DRY: single source of truth for cache keys)
@@ -94,3 +94,15 @@ VERBOSITY_DEFAULT = "default"
 VERBOSITY_VERBOSE = "verbose"
 VERBOSITY_TRACE = "trace"
 VERBOSITY_LEVELS = [VERBOSITY_SILENT, VERBOSITY_DEFAULT, VERBOSITY_VERBOSE, VERBOSITY_TRACE]
+
+# Shell Built-in Commands
+WINDOWS_BUILTINS = [
+    'cd', 'cls', 'copy', 'del', 'dir', 'echo', 'exit', 'help', 
+    'md', 'mkdir', 'move', 'path', 'pause', 'rd', 'ren', 'rename', 
+    'rmdir', 'set', 'time', 'type', 'ver', 'vol'
+]
+
+UNIX_BUILTINS = [
+    'alias', 'cd', 'echo', 'export', 'history', 'kill', 'pwd', 
+    'set', 'source', 'type', 'unalias', 'unset'
+]

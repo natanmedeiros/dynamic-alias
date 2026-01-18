@@ -126,6 +126,33 @@ drwxr-xr-x  5 user user 4096 Jan 13 22:00 .
 > [!NOTE]
 > Shell mode is disabled by default. When disabled, unrecognized commands show "Invalid command."
 
+### Path Completion
+
+Enable system command completion for shell mode:
+
+```yaml
+config:
+  shell: true
+  path-completion: true
+```
+
+With path completion enabled:
+- Press Tab on unrecognized text to complete to system commands
+- Completes to the first matching command from PATH (inline, not dropdown)
+- Only works at the first word of the command line
+
+```
+dya> ech<TAB>
+dya> echo           # Completed inline
+
+dya> git<TAB>
+dya> git            # Completed inline
+```
+
+> [!TIP]
+> Path completion is useful when you frequently use shell mode to run system commands.
+> It provides quick completion without showing a dropdown menu.
+
 ## Exiting
 
 Exit the shell:

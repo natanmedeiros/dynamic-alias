@@ -148,14 +148,11 @@ class InteractiveShell:
         @bindings.add('enter')
         def _(event):
             b = event.current_buffer
-            if b.complete_state:
-                # If menu is open, Enter selects the item (autocompletes)
-                if b.complete_state.current_completion:
-                    b.apply_completion(b.complete_state.current_completion)
-                elif b.complete_state.completions:
-                    b.apply_completion(b.complete_state.completions[0])
+            if b.complete_state and b.complete_state.current_completion:
+                # If menu is open AND an item is selected, Enter selects the item
+                b.apply_completion(b.complete_state.current_completion)
             else:
-                # If no menu, Enter executes
+                # If no menu or no item selected, Enter executes
                 b.validate_and_handle()
 
         @bindings.add('tab')
@@ -251,8 +248,7 @@ class InteractiveShell:
                         if global_config.shell:
                             import subprocess
                             try:
-                                if global_config.verbose:
-                                    print(f"[VERBOSE] Shell mode: executing '{text}'")
+                                self._get_output().verbose_log(f"[VERBOSE] Shell mode: executing '{text}'")
                                 subprocess.run(text, shell=True)
                             except Exception as shell_err:
                                 print(f"Shell error: {shell_err}")
