@@ -246,10 +246,10 @@ class InteractiveShell:
                     else:
                         # Shell mode: execute unrecognized commands directly in shell
                         if global_config.shell:
-                            import subprocess
+                            from .executor import _run_interactive_subprocess
                             try:
                                 self._get_output().verbose_log(f"[VERBOSE] Shell mode: executing '{text}'")
-                                subprocess.run(text, shell=True)
+                                _run_interactive_subprocess(text)
                             except Exception as shell_err:
                                 print(f"Shell error: {shell_err}")
                         else:

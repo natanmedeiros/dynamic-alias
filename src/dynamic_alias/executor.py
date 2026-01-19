@@ -6,6 +6,7 @@ import shlex
 import json  # Rule 4.21
 import sys
 import os
+import signal
 from typing import Dict, List, Any, Optional, Union
 from prompt_toolkit.shortcuts import print_formatted_text
 from prompt_toolkit.formatted_text import HTML
@@ -36,6 +37,68 @@ def _restore_terminal_state(old_state):
     except Exception:
         # Fallback: stty sane
         os.system('stty sane 2>/dev/null')
+
+
+def _run_interactive_subprocess(cmd: str, timeout: Optional[float] = None) -> int:
+    """
+    Run a subprocess that may be interactive, properly handling signals.
+    
+    This function ensures:
+    - Ctrl+C is forwarded to the subprocess (not killing the parent)
+    - Ctrl+D exits the subprocess gracefully
+    - Terminal state is restored after subprocess exits
+    
+    Args:
+        cmd: The command to execute
+        timeout: Optional timeout in seconds (None = no timeout)
+        
+    Returns:
+        The subprocess return code
+        
+    Raises:
+        subprocess.TimeoutExpired: If timeout is exceeded
+    """
+    terminal_state = _save_terminal_state()
+    return_code = 0
+    
+    try:
+        if sys.platform == 'win32':
+            # Windows: Use CREATE_NEW_PROCESS_GROUP to isolate Ctrl+C
+            # This prevents Ctrl+C from killing the parent Python process
+            process = subprocess.Popen(
+                cmd,
+                shell=True,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            )
+            try:
+                return_code = process.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+                raise
+        else:
+            # Unix/macOS: Ignore SIGINT in parent, let child handle it
+            # When child is in foreground, terminal sends SIGINT only to it
+            original_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+            try:
+                process = subprocess.Popen(cmd, shell=True)
+                try:
+                    return_code = process.wait(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+                    raise
+            finally:
+                # Restore original SIGINT handler
+                signal.signal(signal.SIGINT, original_sigint)
+    finally:
+        # Always restore terminal state
+        _restore_terminal_state(terminal_state)
+        # Extra safety: always reset terminal on Unix
+        if sys.platform != 'win32':
+            os.system('stty sane 2>/dev/null')
+    
+    return return_code
 
 class CommandExecutor:
     def __init__(self, data_resolver: DataResolver):
@@ -237,10 +300,6 @@ class CommandExecutor:
         output.print_running(cmd_resolved)
         output.print_divider()
         
-        # Save terminal state before subprocess execution
-        # This prevents terminal corruption if subprocess is interrupted
-        terminal_state = _save_terminal_state()
-        
         try:
             timeout = 0
             if command_chain and hasattr(command_chain[0], 'timeout'):
@@ -255,6 +314,7 @@ class CommandExecutor:
 
             if should_set_locals:
                 # Rule 4.21: Capture output, validate as simple JSON object, set locals
+                # Note: set-locals commands are non-interactive, use subprocess.run
                 result = subprocess.run(
                     cmd_resolved, 
                     shell=True, 
@@ -294,8 +354,9 @@ class CommandExecutor:
                     print(f"Output received: {result.stdout}")
                     
             else:
-                # Normal execution
-                subprocess.run(cmd_resolved, shell=True, timeout=effective_timeout)
+                # Normal execution - use interactive subprocess handler
+                # This properly forwards Ctrl+C to subprocess and handles terminal state
+                _run_interactive_subprocess(cmd_resolved, timeout=effective_timeout)
             
             # Reload cache from disk to pick up changes made by subprocesses (e.g., set-locals)
             # Then save to merge any parent-side changes (e.g., dynamic dict cache)
@@ -303,15 +364,12 @@ class CommandExecutor:
             self.resolver.cache.save()
 
         except KeyboardInterrupt:
+            # This should rarely happen now as SIGINT is ignored during subprocess
             print("\nOperation cancelled.")
         except subprocess.TimeoutExpired:
             print(f"\nError: Command timed out after {timeout}s")
         except Exception as e:
             print(f"Execution error: {e}")
-        finally:
-            # Always restore terminal state after subprocess
-            # This fixes issues where Ctrl+D/Ctrl+C leaves terminal corrupted
-            _restore_terminal_state(terminal_state)
 
     def print_help(self, command_chain: List[Union[CommandConfig, SubCommand, ArgConfig]]):
         """Prints helper text for the matched command chain using the appropriate formatter."""

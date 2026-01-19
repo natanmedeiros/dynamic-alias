@@ -29,7 +29,7 @@ class TestTimeout(unittest.TestCase):
         self.executor = CommandExecutor(self.resolver)
 
     @patch('dynamic_alias.executor.print_formatted_text')
-    @patch('subprocess.run')
+    @patch('dynamic_alias.executor._run_interactive_subprocess')
     def test_command_timeout_from_config(self, mock_run, mock_print):
         # 1. Custom Timeout (Timeout Cmd -> timeout: 10)
         # Find 'timeout' command
@@ -60,3 +60,4 @@ class TestTimeout(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

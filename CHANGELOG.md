@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.3] - 2026-01-19
+
+### Fixed
+- **Interactive Subprocess Signal Handling**: Fixed Ctrl+C behavior when running interactive programs (like `psql`, `python`, etc.) from dya interactive mode.
+  - Ctrl+C is now properly forwarded to the subprocess (e.g., clearing the current line in psql) instead of killing it
+  - Ctrl+D correctly exits the subprocess gracefully
+  - Terminal state is properly restored after subprocess exit, fixing "broken terminal" issues
+  - Works correctly on both Unix/macOS (using SIGINT handling) and Windows (using `CREATE_NEW_PROCESS_GROUP`)
+
+---
+
 ## [1.1.2] - 2026-01-17
 
 ### Added
