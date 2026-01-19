@@ -13,7 +13,7 @@ class TestStrictCommand(unittest.TestCase):
         self.executor = CommandExecutor(self.mock_resolver)
 
     @patch('dynamic_alias.executor.print_formatted_text')
-    @patch('subprocess.run')
+    @patch('dynamic_alias.executor._run_interactive_subprocess')
     def test_strict_true_execution(self, mock_run, mock_print):
         # Strict mode = True
         cmd = CommandConfig(
@@ -44,7 +44,7 @@ class TestStrictCommand(unittest.TestCase):
         # mock_print.assert_called_with(...) # Optional
 
     @patch('dynamic_alias.executor.print_formatted_text')
-    @patch('subprocess.run')
+    @patch('dynamic_alias.executor._run_interactive_subprocess')
     def test_strict_false_execution(self, mock_run, mock_print):
         # Strict mode = False (default)
         cmd = CommandConfig(
@@ -67,3 +67,4 @@ class TestStrictCommand(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

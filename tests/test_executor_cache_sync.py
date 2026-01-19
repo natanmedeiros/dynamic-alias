@@ -84,7 +84,7 @@ command: echo test
             return MagicMock(returncode=0)
         
         # 4. Execute with mocked subprocess
-        with patch('subprocess.run', side_effect=mock_subprocess_run):
+        with patch('dynamic_alias.executor._run_interactive_subprocess', side_effect=mock_subprocess_run):
             executor.execute(cmd_chain, variables, remaining)
         
         # 5. Verify in-memory cache has the subprocess value

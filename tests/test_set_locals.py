@@ -65,7 +65,7 @@ class TestSetLocals(unittest.TestCase):
         self.mock_cache.set_local.assert_any_call("key2", "value2")
         self.mock_cache.save.assert_called()
 
-    @patch('dynamic_alias.executor.subprocess.run')
+    @patch('dynamic_alias.executor._run_interactive_subprocess')
     def test_set_locals_disabled(self, mock_run):
         """Should NOT capture output when set-locals is false."""
         cmd_config = CommandConfig(
@@ -77,10 +77,11 @@ class TestSetLocals(unittest.TestCase):
         
         self.executor.execute([cmd_config], {})
         
-        # Verify call args do NOT include capture_output=True
-        # Note: default call args might include other defaults, check specifically
+        # Verify _run_interactive_subprocess was called (not subprocess.run with capture_output)
+        mock_run.assert_called()
         args, kwargs = mock_run.call_args
-        self.assertNotIn("capture_output", kwargs)
+        # Should be called with command string, not capture_output
+        self.assertIn("echo json", args[0])
         self.mock_cache.set_local.assert_not_called()
 
     @patch('dynamic_alias.executor.subprocess.run')
