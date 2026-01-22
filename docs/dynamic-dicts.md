@@ -208,6 +208,9 @@ dya --dya-clear-all
 
 Dynamic dicts can reference values from **static dicts** and **other dynamic dicts**. This enables powerful chaining patterns. Dependencies are automatically resolved when needed (lazy resolution).
 
+> [!NOTE]
+> **Static dicts** can also reference other static dicts, but they **cannot** reference dynamic dicts. If you need to chain data from a dynamic source, use a dynamic dict instead.
+
 > [!WARNING]
 > **Cyclic references are not allowed.** If dict A references dict B, dict B cannot reference dict A. The system will detect and report circular dependencies.
 

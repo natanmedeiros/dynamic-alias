@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.4] - 2026-01-22
+
+### Added
+- **Dict Chaining**: Static dicts can now reference other static dicts using `$${other_dict.key}` syntax (lazy loading)
+- **Validation**: New validation rule prevents dicts from referencing dynamic_dicts
+
+### Changed
+- Documentation updated to clarify dict/dynamic_dict reference rules
+
+---
+
 ## [1.1.3] - 2026-01-19
 
 ### Fixed
