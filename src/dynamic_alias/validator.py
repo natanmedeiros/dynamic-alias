@@ -293,6 +293,9 @@ class ConfigValidator:
         # 7. Validate dict index bounds and key existence (static dicts only)
         self._validate_dict_index_and_keys()
         
+        # 8. Validate dicts do not reference dynamic_dicts
+        self._validate_dict_no_dynamic_refs()
+        
         return self.report
     
     def _check_file_exists(self) -> bool:
@@ -709,6 +712,52 @@ class ConfigValidator:
                 refs = self._extract_references(text)
                 for source, index_str, key in refs:
                     validate_fn(source, index_str, key, f"arg in '{parent}'", parent)
+    
+    def _validate_dict_no_dynamic_refs(self):
+        """
+        Validate that static dicts do not reference dynamic_dicts.
+        
+        Rule: Dicts can reference other dicts (lazy loading), but CANNOT
+        reference dynamic_dicts. Only dynamic_dicts can reference other
+        dynamic_dicts.
+        """
+        errors_found = False
+        
+        for name, d in self.dicts.items():
+            block_idx = d.get('_block_index', '?')
+            data = d.get('data', [])
+            
+            # Check each item in the dict's data for dynamic_dict references
+            for item_idx, item in enumerate(data):
+                if not isinstance(item, dict):
+                    continue
+                
+                for key, value in item.items():
+                    if not isinstance(value, str):
+                        continue
+                    
+                    # Extract references from this value
+                    refs = self._extract_references(value)
+                    for source, _index, ref_key in refs:
+                        # Skip env and locals (built-in sources)
+                        if source in ('env', 'locals'):
+                            continue
+                        
+                        # Check if source is a dynamic_dict
+                        if source in self.dynamic_dicts:
+                            errors_found = True
+                            self.report.add(ValidationResult(
+                                passed=False,
+                                message=f"dict '{name}' cannot reference dynamic_dict '{source}'",
+                                hint="Dicts can only reference other dicts. Use a static dict instead, or move this logic to a dynamic_dict.",
+                                location=f"Block {block_idx}, item {item_idx}, key '{key}'"
+                            ))
+        
+        if not errors_found:
+            self.report.add(ValidationResult(
+                passed=True,
+                message="No dict→dynamic_dict references found (dicts can only reference other dicts)"
+            ))
 
 def print_validation_report(report: ValidationReport, shortcut: str = "dya"):
     """Print user-friendly validation report with checklist format."""

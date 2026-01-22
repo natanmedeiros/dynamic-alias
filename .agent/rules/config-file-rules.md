@@ -26,12 +26,14 @@ This file defines the rules for creating a new `dya.yaml` or user-defined config
 > **Note**: Positions are **0-indexed** (start at 0, not 1). First item = `[0]`, second = `[1]`, etc.
 
 ## 3. Reference Logic
-1.  **Dict/DynamicDict References**:
-    - Dicts and Dynamic Dicts can reference other Dicts/Dynamic Dicts.
-    - **Condition**: The referencing block must have a **higher priority** number than the referenced block.
-      - `Referencing.Priority > Referenced.Priority`
-2.  **Command References**:
-    - Commands can reference any Dict or Dynamic Dict regardless of priority.
+1.  **Dict References**:
+    - Dicts can reference other dicts (lazy loading)
+    - Dicts **cannot** reference dynamic_dicts (validation error)
+2.  **DynamicDict References**:
+    - Dynamic Dicts can reference both dicts and other dynamic_dicts
+    - Circular references are not allowed and will be detected
+3.  **Command References**:
+    - Commands can reference any dict or dynamic_dict
 
 ## 4. Block Definitions
 

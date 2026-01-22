@@ -165,6 +165,41 @@ data:
     dbname: orders_prod
 ```
 
+## Dict Chaining
+
+Static dicts can reference values from other static dicts using `$${other_dict.key}` syntax. References are resolved lazily when the data is accessed.
+
+```yaml
+---
+type: dict
+name: base_config
+data:
+  - env: production
+    region: us-east-1
+
+---
+type: dict
+name: derived_config
+data:
+  - prefix: $${base_config.env}-$${base_config.region}
+    endpoint: https://api.$${base_config.region}.example.com
+
+---
+type: command
+name: Show Config
+alias: show-config
+command: echo $${derived_config.prefix}
+```
+
+**Usage:**
+```
+dya> show-config
+Running: echo production-us-east-1
+```
+
+> [!WARNING]
+> Dicts **cannot** reference dynamic_dicts. This will cause a validation error. Only dynamic_dicts can reference other dynamic_dicts.
+
 ## Autocomplete
 
 In interactive mode (list mode), typing the alias prefix shows all available options:

@@ -71,7 +71,7 @@ These rules must be applied to every application file
 1.3.8 - If config file not exists, when call -h/--help, display an exception with config requirement, put a divisorm break line and show same content as --dya-help execution
 2 - Dict Structure
 2.1 - Static data accepted only
-2.2 - Cannot use another dict or dynamic_dict
+2.2 - Can reference other dicts (lazy loading), but cannot reference dynamic_dicts
 2.3 - It is required to have a name and data
 2.4 - Data is a list of key-value pairs
 3 - Dynamic Dict Structure
