@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.5] - 2026-01-22
+
+### Fixed
+- **Dict Chain Resolution (again 😅)**: Ok, I admit it... 1.1.4 said it was fixed but it wasn't *really* fixed. Now dict→dict chaining actually works in list mode when you select an item from autocomplete. Third time's the charm, right? 🙈
+
+### Added
+- Dict chain list mode examples in `tests/dya.yaml` for manual testing
+
+---
+
 ## [1.1.4] - 2026-01-22
 
 ### Added

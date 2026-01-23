@@ -85,9 +85,12 @@ class DataResolver:
         if name in self.resolved_data:
             return self.resolved_data[name]
         
-        # Check static dicts first (no circular reference risk)
+        # Check static dicts first
         if name in self.config.dicts:
-            self.resolved_data[name] = self.config.dicts[name].data
+            # Process dict data to resolve any $${other_dict.key} references
+            raw_data = self.config.dicts[name].data
+            processed_data = self._resolve_dict_data_references(raw_data, name)
+            self.resolved_data[name] = processed_data
             elapsed = time.time() - resolve_start
             self.add_trace_log("DataResolver", "resolve_one", elapsed,
                              inputs={"name": name, "type": "dict"},
@@ -153,6 +156,56 @@ class DataResolver:
         print(f"  Available dicts: {list(self.config.dicts.keys())}")
         print(f"  Available dynamic_dicts: {list(self.config.dynamic_dicts.keys())}")
         return []
+
+    def _resolve_dict_data_references(self, data: List[Dict[str, Any]], dict_name: str) -> List[Dict[str, Any]]:
+        """
+        Resolve $${other_dict.key} references in static dict data.
+        
+        This enables dict chaining: a static dict can have values that reference
+        other static dicts, and those references are resolved when the dict is loaded.
+        
+        Args:
+            data: List of dict items (raw data from config)
+            dict_name: Name of the dict being processed (for circular reference detection)
+        
+        Returns:
+            Processed data with all dict references resolved
+        """
+        import copy
+        
+        # Add to resolution stack for circular reference detection
+        if dict_name in self._resolution_stack:
+            chain = ' -> '.join(self._resolution_stack) + f' -> {dict_name}'
+            print(f"Warning: Circular reference detected in dict data resolution: {chain}")
+            return data
+        
+        self._resolution_stack.add(dict_name)
+        
+        try:
+            processed_data = []
+            for item in data:
+                if not isinstance(item, dict):
+                    processed_data.append(item)
+                    continue
+                
+                processed_item = {}
+                for key, value in item.items():
+                    if isinstance(value, str):
+                        # Resolve any $${source.key} references in the value
+                        resolved_value = VariableResolver.resolve_app_vars(
+                            value,
+                            resolver_func=self.resolve_one,
+                            use_local_cache=self.cache.get_local
+                        )
+                        processed_item[key] = resolved_value
+                    else:
+                        processed_item[key] = value
+                
+                processed_data.append(processed_item)
+            
+            return processed_data
+        finally:
+            self._resolution_stack.discard(dict_name)
 
     def _execute_dynamic_source(self, dd: DynamicDictConfig) -> List[Dict[str, Any]]:
         try:

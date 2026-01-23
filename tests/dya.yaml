@@ -152,6 +152,74 @@ helper: Tests chaining dict -> dynamic_dict -> dynamic_dict -> command
 
 ---
 # ============================================================================
+# DICT CHAIN LIST MODE TESTS (Dict -> Dict references in list mode)
+# ============================================================================
+
+# Base dict with region configurations
+type: dict
+name: regions
+data:
+  - name: us-east
+    endpoint: us-east.api.example.com
+    zone: zone-a
+  - name: eu-west
+    endpoint: eu-west.api.example.com
+    zone: zone-b
+  - name: ap-south
+    endpoint: ap-south.api.example.com
+    zone: zone-c
+
+---
+# Dict that chains to regions dict - environments with region references
+type: dict
+name: chain_environments
+data:
+  - name: development
+    region: us-east
+    api_url: https://$${regions[0].endpoint}/dev
+    deploy_zone: $${regions[0].zone}
+  - name: staging
+    region: eu-west
+    api_url: https://$${regions[1].endpoint}/staging
+    deploy_zone: $${regions[1].zone}
+  - name: production
+    region: ap-south
+    api_url: https://$${regions[2].endpoint}/prod
+    deploy_zone: $${regions[2].zone}
+
+---
+# Command using dict chain in list mode - select environment, get resolved URLs
+type: command
+name: Deploy Environment
+alias: deploy-env $${chain_environments.name}
+command: echo Deploying to $${chain_environments.name} at $${chain_environments.api_url} in zone $${chain_environments.deploy_zone}
+helper: Tests dict chain in list mode - environments reference regions dict
+
+---
+# Another dict chain example - servers referencing environments
+type: dict
+name: chain_servers
+data:
+  - name: web-server
+    env: development
+    full_url: $${chain_environments[0].api_url}/web
+  - name: api-server
+    env: staging
+    full_url: $${chain_environments[1].api_url}/api
+  - name: db-proxy
+    env: production
+    full_url: $${chain_environments[2].api_url}/db
+
+---
+# Command using multi-level dict chain in list mode
+type: command
+name: Server Info
+alias: server-info $${chain_servers.name}
+command: echo Server $${chain_servers.name} for env $${chain_servers.env} at $${chain_servers.full_url}
+helper: Tests multi-level dict chain (servers -> environments -> regions)
+
+---
+# ============================================================================
 # LOCALS TEST SECTION (Rules 1.2.25, 1.2.26, 1.2.27)
 # ============================================================================
 
